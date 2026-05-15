@@ -1,0 +1,167 @@
+import { useState } from "react";
+import { competitorPrices, fareClasses, ROUTES } from "../data/mockData";
+import { TrendingUp, TrendingDown, Minus, Eye } from "lucide-react";
+
+const MY_AIRLINE = "우리 항공";
+const CLASSES = ["Y", "M", "Q"];
+
+export default function CompetitorMonitor() {
+  const [selectedRoute, setSelectedRoute] = useState(ROUTES[0]);
+
+  const myFares: Record<string, number> = {};
+  fareClasses
+    .filter((fc) => ["F001", "F002"].includes(fc.flightId))
+    .forEach((fc) => {
+      if (!myFares[fc.bookingClass]) myFares[fc.bookingClass] = fc.fare;
+    });
+
+  const competitors = [...new Set(
+    competitorPrices
+      .filter((c) => c.route === selectedRoute)
+      .map((c) => c.airline)
+  )];
+
+  const getCompFare = (airline: string, cls: string) =>
+    competitorPrices.find((c) => c.route === selectedRoute && c.airline === airline && c.bookingClass === cls)?.fare;
+
+  const allAirlines = [MY_AIRLINE, ...competitors];
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-2">
+        <Eye size={20} className="text-indigo-500" />
+        <h2 className="text-xl font-bold text-gray-800">경쟁사 가격 모니터링</h2>
+        <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-medium">AI Mock Data</span>
+      </div>
+
+      {/* Route selector */}
+      <div className="flex flex-wrap gap-2">
+        {ROUTES.map((r) => (
+          <button
+            key={r}
+            onClick={() => setSelectedRoute(r)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${
+              selectedRoute === r
+                ? "bg-indigo-600 text-white border-indigo-600"
+                : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300"
+            }`}
+          >
+            {r}
+          </button>
+        ))}
+      </div>
+
+      {/* Comparison table */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b border-gray-100">
+            <tr>
+              <th className="text-left px-4 py-3 font-semibold text-gray-600">항공사</th>
+              {CLASSES.map((cls) => (
+                <th key={cls} className="text-right px-4 py-3 font-semibold text-gray-600">
+                  Class {cls}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {allAirlines.map((airline, idx) => {
+              const isUs = airline === MY_AIRLINE;
+              return (
+                <tr key={airline} className={`border-b border-gray-50 ${isUs ? "bg-blue-50/60" : "hover:bg-gray-50"}`}>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${isUs ? "bg-blue-500" : idx === 1 ? "bg-orange-400" : "bg-teal-400"}`} />
+                      <span className={`font-medium ${isUs ? "text-blue-700 font-bold" : "text-gray-700"}`}>
+                        {airline}
+                        {isUs && <span className="ml-1.5 text-xs bg-blue-200 text-blue-700 px-1.5 py-0.5 rounded-full">나</span>}
+                      </span>
+                    </div>
+                  </td>
+                  {CLASSES.map((cls) => {
+                    const myFare = myFares[cls];
+                    const fare = isUs ? myFare : getCompFare(airline, cls);
+                    if (!fare) {
+                      return (
+                        <td key={cls} className="px-4 py-3 text-right text-gray-300">-</td>
+                      );
+                    }
+                    const diff = isUs ? null : fare - myFare;
+                    const pct = diff !== null && myFare ? Math.round((diff / myFare) * 100) : null;
+
+                    return (
+                      <td key={cls} className="px-4 py-3 text-right">
+                        <div className="font-mono font-semibold text-gray-800">
+                          {fare.toLocaleString()}원
+                        </div>
+                        {pct !== null && (
+                          <div className={`flex items-center justify-end gap-0.5 text-xs mt-0.5 ${
+                            pct > 0 ? "text-red-500" : pct < 0 ? "text-blue-500" : "text-gray-400"
+                          }`}>
+                            {pct > 0 ? <TrendingUp size={11} /> : pct < 0 ? <TrendingDown size={11} /> : <Minus size={11} />}
+                            {pct > 0 ? `+${pct}%` : pct < 0 ? `${pct}%` : "동일"}
+                          </div>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <div className="px-4 py-2.5 bg-gray-50 border-t border-gray-100 text-xs text-gray-400">
+          ↑↓ 표시는 우리 항공 대비 경쟁사 가격 차이입니다.
+        </div>
+      </div>
+
+      {/* Card comparison */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {CLASSES.map((cls) => {
+          const myFare = myFares[cls];
+          const compFares = competitors.map((a) => ({
+            airline: a,
+            fare: getCompFare(a, cls),
+          })).filter((c) => c.fare !== undefined) as { airline: string; fare: number }[];
+
+          const allFares = [{ airline: MY_AIRLINE, fare: myFare }, ...compFares]
+            .filter((x) => x.fare > 0)
+            .sort((a, b) => a.fare - b.fare);
+          const min = allFares[0];
+          const isLowest = min.airline === MY_AIRLINE;
+
+          return (
+            <div key={cls} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-bold text-gray-700">Booking Class {cls}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isLowest ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"}`}>
+                  {isLowest ? "최저가" : "최저가 아님"}
+                </span>
+              </div>
+              {allFares.map((item) => {
+                const isUs = item.airline === MY_AIRLINE;
+                const barWidth = Math.round((item.fare / allFares[allFares.length - 1].fare) * 100);
+                return (
+                  <div key={item.airline} className="mb-2">
+                    <div className="flex justify-between text-xs mb-0.5">
+                      <span className={isUs ? "text-blue-600 font-bold" : "text-gray-500"}>{item.airline}</span>
+                      <span className={`font-mono font-semibold ${isUs ? "text-blue-700" : "text-gray-700"}`}>
+                        {item.fare.toLocaleString()}원
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${isUs ? "bg-blue-500" : "bg-gray-300"}`}
+                        style={{ width: `${barWidth}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

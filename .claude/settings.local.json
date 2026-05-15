@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /Users/hyunahseo/project/hackathon/aidlc-docs/inception/requirements)",
+      "Bash(mkdir -p /Users/hyunahseo/project/hackathon/aidlc-docs/inception/plans)",
+      "Bash(npm create *)",
+      "Bash(npx --version)",
+      "Read(//opt/homebrew/bin/**)",
+      "Bash(brew list *)",
+      "Bash(brew reinstall *)",
+      "Bash(npm --version)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5174/)",
+      "Bash(open *)"
+    ]
+  }
+}
