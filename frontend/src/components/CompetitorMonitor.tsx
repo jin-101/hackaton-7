@@ -1,19 +1,27 @@
 import { useState } from "react";
-import { competitorPrices, fareClasses, ROUTES } from "../data/mockData";
+import { competitorPrices, buildDashboardFlights, KE_DOMESTIC_ROUTES } from "../data/mockData";
 import { TrendingUp, TrendingDown, Minus, Eye } from "lucide-react";
 
-const MY_AIRLINE = "우리 항공";
-const CLASSES = ["Y", "M", "Q"];
+const MY_AIRLINE = "대한항공";
+const CLASSES = ["F", "C", "Y", "V"] as const;
+const CLASS_LABELS: Record<string, string> = {
+  F: "일등석",
+  C: "프레스티지",
+  Y: "일반석",
+  V: "특가할인",
+};
 
 export default function CompetitorMonitor() {
-  const [selectedRoute, setSelectedRoute] = useState(ROUTES[0]);
+  const [selectedRoute, setSelectedRoute] = useState(KE_DOMESTIC_ROUTES[0]);
 
+  // 대한항공 운임: 해당 노선 첫 번째 항공편의 등급별 현재가
   const myFares: Record<string, number> = {};
-  fareClasses
-    .filter((fc) => ["F001", "F002"].includes(fc.flightId))
-    .forEach((fc) => {
-      if (!myFares[fc.bookingClass]) myFares[fc.bookingClass] = fc.fare;
+  const myFlights = buildDashboardFlights(selectedRoute);
+  if (myFlights.length > 0) {
+    myFlights[0].classes.forEach((cls) => {
+      myFares[cls.code] = cls.price;
     });
+  }
 
   const competitors = [...new Set(
     competitorPrices
@@ -36,7 +44,7 @@ export default function CompetitorMonitor() {
 
       {/* Route selector */}
       <div className="flex flex-wrap gap-2">
-        {ROUTES.map((r) => (
+        {KE_DOMESTIC_ROUTES.map((r) => (
           <button
             key={r}
             onClick={() => setSelectedRoute(r)}
@@ -59,7 +67,7 @@ export default function CompetitorMonitor() {
               <th className="text-left px-4 py-3 font-semibold text-gray-600">항공사</th>
               {CLASSES.map((cls) => (
                 <th key={cls} className="text-right px-4 py-3 font-semibold text-gray-600">
-                  Class {cls}
+                  {cls} <span className="text-gray-400 font-normal text-xs">({CLASS_LABELS[cls]})</span>
                 </th>
               ))}
             </tr>
@@ -111,7 +119,7 @@ export default function CompetitorMonitor() {
           </tbody>
         </table>
         <div className="px-4 py-2.5 bg-gray-50 border-t border-gray-100 text-xs text-gray-400">
-          ↑↓ 표시는 우리 항공 대비 경쟁사 가격 차이입니다.
+          ↑↓ 표시는 대한항공 대비 경쟁사 가격 차이입니다.
         </div>
       </div>
 
@@ -133,7 +141,7 @@ export default function CompetitorMonitor() {
           return (
             <div key={cls} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
               <div className="flex items-center justify-between mb-3">
-                <span className="font-bold text-gray-700">Booking Class {cls}</span>
+                <span className="font-bold text-gray-700">{cls} <span className="text-gray-400 font-normal text-sm">({CLASS_LABELS[cls]})</span></span>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isLowest ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"}`}>
                   {isLowest ? "최저가" : "최저가 아님"}
                 </span>

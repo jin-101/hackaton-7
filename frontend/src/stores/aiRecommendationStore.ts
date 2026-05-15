@@ -1,0 +1,68 @@
+import { create } from 'zustand';
+import { buildDashboardFlights, KE_DOMESTIC_ROUTES } from '../data/mockData';
+import type { AiRecommendationDTO, RecommendationStatus } from '../types';
+
+interface AiRecommendationStore {
+  recommendations: AiRecommendationDTO[];
+
+  fetchRecommendations: (route?: string) => void;
+  approveRecommendation: (recommendationId: string) => void;
+  rejectRecommendation: (recommendationId: string) => void;
+}
+
+function buildRecs(route: string): AiRecommendationDTO[] {
+  const flights = buildDashboardFlights(route);
+  const recs: AiRecommendationDTO[] = [];
+  for (const flight of flights) {
+    for (const cls of flight.classes) {
+      if (cls.aiPrice === cls.price) continue;
+      const pct = Math.round((cls.aiPrice - cls.price) / cls.price * 100);
+      recs.push({
+        recommendationId: `${flight.id}-${cls.code}`,
+        flightId: flight.id,
+        flightNumber: flight.id,
+        route,
+        departureTime: flight.time,
+        classCode: cls.code,
+        tier: cls.name.includes('일등석') ? 'prestige'
+          : cls.name.includes('프레스티지') ? 'prestige'
+          : cls.name.includes('일반석') ? 'economy_full'
+          : 'economy_special',
+        currentPrice: cls.price,
+        recommendedPrice: cls.aiPrice,
+        rationale: flight.reason,
+        changePercent: pct,
+        confidence: Math.round(70 + Math.abs(pct) * 0.8),
+        predictedLoadFactor: Math.min(98, Math.round(flight.lf + Math.abs(pct) * 0.3)),
+        requiresManualApproval: true,
+        status: 'pending' as RecommendationStatus,
+        createdAt: new Date().toISOString(),
+      });
+    }
+  }
+  return recs;
+}
+
+export const useAiRecommendationStore = create<AiRecommendationStore>((set) => ({
+  recommendations: buildRecs(KE_DOMESTIC_ROUTES[0]),
+
+  fetchRecommendations: (route) => {
+    set({ recommendations: buildRecs(route ?? KE_DOMESTIC_ROUTES[0]) });
+  },
+
+  approveRecommendation: (recommendationId) => {
+    set((state) => ({
+      recommendations: state.recommendations.map((r) =>
+        r.recommendationId === recommendationId ? { ...r, status: 'approved' as RecommendationStatus } : r
+      ),
+    }));
+  },
+
+  rejectRecommendation: (recommendationId) => {
+    set((state) => ({
+      recommendations: state.recommendations.map((r) =>
+        r.recommendationId === recommendationId ? { ...r, status: 'rejected' as RecommendationStatus } : r
+      ),
+    }));
+  },
+}));

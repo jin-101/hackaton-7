@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대한항공 RM AI 커맨드 센터</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .transition-all { transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+    <!-- 글로벌 네비게이션 -->
+    <nav class="bg-[#002561] text-white p-4 flex justify-between items-center sticky top-0 z-50 shadow-md">
+        <div class="flex items-center gap-3">
+            <div class="bg-white p-1 rounded shadow-inner">
+                <i data-lucide="plane" class="text-[#002561]"></i>
+            </div>
+            <h1 class="text-xl font-bold tracking-tight">대한항공 RM AI 커맨드 센터</h1>
+        </div>
+        <div class="flex gap-6 items-center">
+            <div class="text-right">
+                <span class="text-[10px] opacity-70 block uppercase tracking-widest">System Status</span>
+                <span class="text-sm font-bold flex items-center gap-1">
+                    <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div> 실시간 인벤토리 분석 중
+                </span>
+            </div>
+            <div class="w-10 h-10 bg-sky-500 rounded-full flex items-center justify-center font-bold border-2 border-white/20 shadow-inner">RM</div>
+        </div>
+    </nav>
+
+    <main class="p-6 max-w-[1600px] mx-auto grid grid-cols-12 gap-6 pb-24">
+        
+        <!-- 1. 왼쪽 사이드바 -->
+        <section class="col-span-12 lg:col-span-3 space-y-6">
+            <!-- 설정 -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-xs font-black text-slate-400 mb-4 flex items-center gap-2 uppercase tracking-tighter">
+                    <i data-lucide="search" size="14"></i> 노선 및 일자 설정
+                </h2>
+                <div class="space-y-4">
+                    <select class="w-full p-3 border border-slate-200 rounded-lg bg-slate-50 font-black text-slate-700 outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="GMP-CJU">김포 (GMP) ↔ 제주 (CJU)</option>
+                        <option value="GMP-PUS">김포 (GMP) ↔ 부산 (PUS)</option>
+                    </select>
+                    <div class="grid grid-cols-4 gap-1" id="date-picker">
+                        <!-- 날짜 버튼은 JS에서 생성 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI 컨설팅 -->
+            <div class="bg-[#002561] p-5 rounded-xl shadow-lg text-white">
+                <h2 class="text-sm font-black mb-4 flex items-center gap-2">
+                    <i data-lucide="sparkles" class="text-sky-300"></i> AI 전략 분석 요청
+                </h2>
+                <div class="space-y-3">
+                    <textarea id="ai-query" 
+                        class="w-full h-24 p-3 bg-white/10 border border-white/20 rounded-lg text-xs placeholder:text-white/30 focus:bg-white/20 focus:outline-none transition-all resize-none font-medium"
+                        placeholder="돌발 이슈를 입력하세요 (예: 태풍 보도, 대형 행사 등)"></textarea>
+                    <button id="ai-btn"
+                        class="w-full bg-sky-400 hover:bg-sky-500 text-[#002561] font-black py-3 rounded-lg text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-95">
+                        <i data-lucide="send" size="16"></i> AI 전략 분석 시작
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. 중앙 섹션 -->
+        <section class="col-span-12 lg:col-span-6 space-y-6">
+            <!-- AI 제안 팝업 (초기 숨김) -->
+            <div id="ai-popup" class="hidden bg-white border-2 border-sky-400 rounded-xl p-5 shadow-2xl animate-bounce-short">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="flex items-center gap-2">
+                        <div class="p-2 bg-sky-100 rounded-lg text-sky-600"><i data-lucide="sparkles"></i></div>
+                        <div>
+                            <h3 class="font-black text-slate-800 text-sm">AI 긴급 전략 제안</h3>
+                            <p class="text-[10px] text-slate-500 font-bold uppercase">External Factor Detected</p>
+                        </div>
+                    </div>
+                    <button onclick="closePopup()"><i data-lucide="x-circle" class="text-slate-300 hover:text-slate-500"></i></button>
+                </div>
+                <p id="ai-desc" class="text-xs font-bold text-slate-700 mb-4 italic"></p>
+                <div class="flex gap-3">
+                    <button onclick="applyAiStrategy()" class="flex-1 bg-[#002561] text-white py-2.5 rounded-lg font-black text-xs">전략 승인 및 적용</button>
+                    <button onclick="closePopup()" class="flex-1 bg-slate-100 text-slate-500 py-2.5 rounded-lg font-black text-xs">기각</button>
+                </div>
+            </div>
+
+            <!-- 운항 현황 테이블 -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-5 border-b border-slate-100 flex justify-between items-end bg-white">
+                    <div>
+                        <h2 class="text-xl font-black text-slate-800 tracking-tight" id="view-date">2024-03-25 운항 현황</h2>
+                        <p class="text-xs text-slate-400 font-bold mt-1 uppercase tracking-widest">B737-900 (C8 Y165) Inventory</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] font-black text-slate-400 block mb-1 uppercase">Selected</span>
+                        <span class="text-lg font-black text-[#002561]" id="selected-id-top">KE1201 / 07:30</span>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 text-slate-400 text-[10px] uppercase font-black border-b border-slate-100">
+                            <tr>
+                                <th class="px-6 py-4">편명/시간</th>
+                                <th class="px-6 py-4 text-center">L/F (%)</th>
+                                <th class="px-6 py-4 text-center">Pace</th>
+                                <th class="px-6 py-4">현재가</th>
+                                <th class="px-6 py-4 text-blue-600">AI 추천</th>
+                            </tr>
+                        </thead>
+                        <tbody id="flight-table-body" class="divide-y divide-slate-50">
+                            <!-- JS에서 렌더링 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 좌석 등급별 보드 -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-black text-slate-800 flex items-center gap-2">
+                        <i data-lucide="layout-grid" class="text-[#002561]"></i> 좌석 등급별 판매 현황 (Detail)
+                    </h3>
+                    <span class="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-bold">TOTAL 173 SEATS</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="class-grid">
+                    <!-- JS에서 렌더링 -->
+                </div>
+                <div class="mt-6 pt-4 border-t border-dashed border-slate-200 flex items-start gap-3">
+                    <i data-lucide="alert-circle" class="text-blue-500 flex-shrink-0 mt-0.5" size="16"></i>
+                    <p id="ai-reason" class="text-[11px] leading-relaxed text-slate-500 font-medium"></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. 오른쪽 사이드바 -->
+        <section class="col-span-12 lg:col-span-3 space-y-6">
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm sticky top-24">
+                <h2 class="text-sm font-black text-slate-800 mb-6 flex items-center gap-2 border-b pb-4 uppercase">
+                    <i data-lucide="bar-chart-4" class="text-[#002561]"></i> Profit Analysis
+                </h2>
+                <div class="space-y-6">
+                    <div class="space-y-3">
+                        <div class="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-[10px] font-black text-blue-600">REVENUE</span>
+                                <i data-lucide="coins" size="14" class="text-blue-400"></i>
+                            </div>
+                            <div class="text-xl font-black text-[#002561]" id="stat-revenue">₩0</div>
+                            <p class="text-[9px] text-blue-400 font-bold mt-1 tracking-tight" id="stat-sold">0석 판매 기준</p>
+                        </div>
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-[10px] font-black text-slate-500">COST</span>
+                                <i data-lucide="wallet" size="14" class="text-slate-400"></i>
+                            </div>
+                            <div class="text-xl font-black text-slate-700" id="stat-cost">₩0</div>
+                            <p class="text-[9px] text-slate-400 font-bold mt-1 uppercase">Operational Expenses</p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border-2 border-slate-100 shadow-inner text-center">
+                        <div class="flex justify-between items-end mb-2">
+                            <span class="text-[10px] font-black text-slate-400 uppercase">Margin</span>
+                            <span id="stat-margin-pct" class="text-sm font-black text-green-600">0%</span>
+                        </div>
+                        <div class="text-2xl font-black text-slate-800 tracking-tight mb-3" id="stat-profit">₩0</div>
+                        <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                            <div id="stat-margin-bar" class="h-full bg-green-500 transition-all duration-1000" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <button class="w-full bg-[#002561] text-white py-4 rounded-xl font-black text-sm flex items-center justify-center gap-2 hover:bg-blue-800 transition-all shadow-md active:scale-95">
+                        인벤토리 실시간 통제 확정
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 푸터 -->
+    <footer class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 z-40 shadow-[0_-4px_10px_-1px_rgba(0,0,0,0.08)]">
+        <div class="max-w-[1600px] mx-auto flex justify-between items-center px-4">
+            <div class="flex gap-10 items-center">
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-slate-400 font-black tracking-widest uppercase">Daily Est. Revenue</span>
+                    <span class="text-lg font-black text-[#002561]">₩382,400,000 <span class="text-xs text-green-500 font-bold ml-1">▲ 8.4%</span></span>
+                </div>
+                <div class="flex flex-col border-l border-slate-200 pl-10">
+                    <span class="text-[10px] text-slate-400 font-black tracking-widest uppercase">Avg Margin</span>
+                    <span class="text-lg font-black text-slate-700">14.2%</span>
+                </div>
+            </div>
+            <button class="flex items-center gap-1.5 px-6 py-3 bg-[#002561] text-white rounded-xl text-xs font-black hover:opacity-90 shadow-lg active:scale-95">
+                전 노선 인벤토리 최종 동기화
+            </button>
+        </div>
+    </footer>
+
+    <script>
+        // 데이터셋
+        const flights = [
+            { 
+                id: 'KE1201', time: '07:30', status: '수요 급증', lf: 88, pace: '+12%', currentPrice: 105000, aiRecommended: 118000, 
+                baseCost: 11500000,
+                classes: [
+                    { name: '프레스티지', code: 'C', seats: 8, sold: 6, price: 165000, status: 'Open' },
+                    { name: '일반석 정상가', code: 'Y/B/M', seats: 40, sold: 38, price: 105000, status: 'Open' },
+                    { name: '일반석 할인가', code: 'S/K/L', seats: 80, sold: 75, price: 85000, status: 'Closed' },
+                    { name: '일반석 특가', code: 'T/V/G', seats: 45, sold: 34, price: 62000, status: 'Closed' }
+                ],
+                reason: '출발 7일 전, 예약 페이스가 과거 평균 대비 15% 빠름. 하위 클래스 마감 권고.' 
+            },
+            { 
+                id: 'KE1205', time: '10:15', status: '안정적', lf: 62, pace: '+2%', currentPrice: 85000, aiRecommended: 85000, 
+                baseCost: 10800000,
+                classes: [
+                    { name: '프레스티지', code: 'C', seats: 8, sold: 2, price: 155000, status: 'Open' },
+                    { name: '일반석 정상가', code: 'Y/B/M', seats: 40, sold: 15, price: 95000, status: 'Open' },
+                    { name: '일반석 할인가', code: 'S/K/L', seats: 80, sold: 55, price: 79000, status: 'Open' },
+                    { name: '일반석 특가', code: 'T/V/G', seats: 45, sold: 35, price: 58000, status: 'Open' }
+                ],
+                reason: '전형적인 비선호 시간대 패턴. 전 클래스 인벤토리 개방 유지 권고.' 
+            },
+            { 
+                id: 'KE1211', time: '13:45', status: '수요 저조', lf: 45, pace: '-5%', currentPrice: 79000, aiRecommended: 72000, 
+                baseCost: 10200000,
+                classes: [
+                    { name: '프레스티지', code: 'C', seats: 8, sold: 1, price: 145000, status: 'Open' },
+                    { name: '일반석 정상가', code: 'Y/B/M', seats: 40, sold: 10, price: 89000, status: 'Open' },
+                    { name: '일반석 할인가', code: 'S/K/L', seats: 80, sold: 30, price: 65000, status: 'Open' },
+                    { name: '일반석 특가', code: 'T/V/G', seats: 45, sold: 37, price: 49000, status: 'Open' }
+                ],
+                reason: '예약 유입 속도 저조. 특가(T/V) 클래스 공급 확대 필요.' 
+            },
+            { 
+                id: 'KE1223', time: '18:20', status: '위험', lf: 94, pace: '+20%', currentPrice: 112000, aiRecommended: 135000, 
+                baseCost: 12000000,
+                classes: [
+                    { name: '프레스티지', code: 'C', seats: 8, sold: 8, price: 175000, status: 'Sold Out' },
+                    { name: '일반석 정상가', code: 'Y/B/M', seats: 40, sold: 39, price: 112000, status: 'Open' },
+                    { name: '일반석 할인가', code: 'S/K/L', seats: 80, sold: 78, price: 92000, status: 'Closed' },
+                    { name: '일반석 특가', code: 'T/V/G', seats: 45, sold: 38, price: 69000, status: 'Closed' }
+                ],
+                reason: '프레스티지 만석 및 일반석 잔여 10석 미만. 정상가 위주 판매 전환.' 
+            }
+        ];
+
+        let selectedFlight = flights[0];
+        let selectedDate = '2024-03-25';
+
+        // 초기화
+        function init() {
+            renderDates();
+            renderFlights();
+            updateDetails();
+            lucide.createIcons();
+        }
+
+        // 날짜 렌더링
+        function renderDates() {
+            const container = document.getElementById('date-picker');
+            const dates = [25, 26, 27, 28, 29, 30, 31];
+            container.innerHTML = dates.map(d => `
+                <button onclick="changeDate('2024-03-${d}')" class="p-2 text-[10px] font-black rounded-lg border transition-all ${selectedDate.includes(d) ? 'bg-[#002561] text-white' : 'bg-white text-slate-500 hover:border-blue-300'}">
+                    ${d}일
+                    <div class="opacity-60 text-[8px] font-normal">월</div>
+                </button>
+            `).join('');
+        }
+
+        function changeDate(date) {
+            selectedDate = date;
+            document.getElementById('view-date').innerText = `${date} 운항 현황`;
+            renderDates();
+        }
+
+        // 항공편 테이블 렌더링
+        function renderFlights() {
+            const tbody = document.getElementById('flight-table-body');
+            tbody.innerHTML = flights.map(f => `
+                <tr onclick="selectFlight('${f.id}')" class="hover:bg-blue-50 transition-all cursor-pointer ${selectedFlight.id === f.id ? 'bg-blue-50/80 border-l-4 border-[#002561]' : 'border-l-4 border-transparent'}">
+                    <td class="px-6 py-4">
+                        <div class="font-black text-slate-900 text-sm">${f.id}</div>
+                        <div class="text-[10px] text-slate-400 font-bold">${f.time}</div>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <div class="w-full bg-slate-200 rounded-full h-1.5 max-w-[50px] mx-auto overflow-hidden">
+                            <div class="h-full ${f.lf > 90 ? 'bg-red-500' : 'bg-[#002561]'}" style="width: ${f.lf}%"></div>
+                        </div>
+                        <div class="text-[10px] mt-1 font-black text-slate-600">${f.lf}%</div>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <div class="text-[11px] font-black ${f.pace.includes('+') ? 'text-red-500' : 'text-blue-500'}">${f.pace}</div>
+                    </td>
+                    <td class="px-6 py-4 text-[11px] font-bold text-slate-900">₩${f.currentPrice.toLocaleString()}</td>
+                    <td class="px-6 py-4 font-black text-[11px] text-blue-600">₩${f.aiRecommended.toLocaleString()}</td>
+                </tr>
+            `).join('');
+        }
+
+        function selectFlight(id) {
+            selectedFlight = flights.find(f => f.id === id);
+            renderFlights();
+            updateDetails();
+        }
+
+        // 상세 정보 업데이트
+        function updateDetails() {
+            // 상단 편명
+            document.getElementById('selected-id-top').innerText = `${selectedFlight.id} / ${selectedFlight.time}`;
+            
+            // 클래스 그리드
+            const grid = document.getElementById('class-grid');
+            grid.innerHTML = selectedFlight.classes.map(cls => `
+                <div class="p-4 rounded-xl border border-slate-100 bg-slate-50 hover:border-blue-200 transition-all group shadow-sm">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <span class="text-[10px] font-black px-2 py-0.5 rounded-md ${getClassColor(cls.name)}">${cls.code}</span>
+                            <h4 class="text-sm font-black text-slate-800 mt-1">${cls.name}</h4>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] font-black px-2 py-0.5 rounded ${cls.status === 'Open' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}">${cls.status}</span>
+                            <div class="text-xs font-black text-slate-900 mt-1">₩${cls.price.toLocaleString()}</div>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-[10px] font-bold">
+                            <span class="text-slate-400">판매율 ${Math.round((cls.sold/cls.seats)*100)}%</span>
+                            <span class="text-slate-600">${cls.sold} / ${cls.seats}석</span>
+                        </div>
+                        <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                            <div class="h-full transition-all duration-700 ${getBarColor(cls.name)}" style="width: ${(cls.sold/cls.seats)*100}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            // 분석 근거
+            document.getElementById('ai-reason').innerText = selectedFlight.reason;
+
+            // 재무 데이터
+            const revenue = selectedFlight.classes.reduce((sum, cls) => sum + (cls.sold * cls.price), 0);
+            const cost = selectedFlight.baseCost;
+            const profit = revenue - cost;
+            const margin = ((profit / revenue) * 100).toFixed(1);
+            const soldSeats = selectedFlight.classes.reduce((sum, cls) => sum + cls.sold, 0);
+
+            document.getElementById('stat-revenue').innerText = `₩${revenue.toLocaleString()}`;
+            document.getElementById('stat-sold').innerText = `${soldSeats}석 판매 기준 (L/F ${selectedFlight.lf}%)`;
+            document.getElementById('stat-cost').innerText = `₩${cost.toLocaleString()}`;
+            document.getElementById('stat-profit').innerText = `₩${profit.toLocaleString()}`;
+            document.getElementById('stat-margin-pct').innerText = `${margin}% Margin`;
+            document.getElementById('stat-margin-bar').style.width = `${Math.max(margin, 5)}%`;
+            document.getElementById('stat-margin-pct').className = `text-sm font-black ${profit > 0 ? 'text-green-600' : 'text-red-600'}`;
+        }
+
+        function getClassColor(name) {
+            if (name.includes('프레스티지')) return 'bg-amber-100 text-amber-700';
+            if (name.includes('정상가')) return 'bg-blue-100 text-blue-700';
+            if (name.includes('할인가')) return 'bg-sky-100 text-sky-700';
+            return 'bg-slate-200 text-slate-600';
+        }
+
+        function getBarColor(name) {
+            if (name.includes('프레스티지')) return 'bg-amber-500';
+            if (name.includes('정상가')) return 'bg-blue-600';
+            return 'bg-sky-400';
+        }
+
+        // AI 팝업 제어
+        document.getElementById('ai-btn').addEventListener('click', () => {
+            const query = document.getElementById('ai-query').value;
+            if (!query) return;
+            
+            document.getElementById('ai-btn').innerText = "분석 중...";
+            setTimeout(() => {
+                document.getElementById('ai-desc').innerText = `"${query}" 분석 결과, 고수요 비즈니스 고객 유입이 15% 증가할 것으로 예측됩니다. 하위 클래스 인벤토리를 즉시 회수하십시오.`;
+                document.getElementById('ai-popup').classList.remove('hidden');
+                document.getElementById('ai-btn').innerHTML = `<i data-lucide="send" size="16"></i> AI 전략 분석 시작`;
+                lucide.createIcons();
+            }, 1500);
+        });
+
+        function closePopup() {
+            document.getElementById('ai-popup').classList.add('hidden');
+        }
+
+        function applyAiStrategy() {
+            // 전략 적용 로직 (샘플)
+            selectedFlight.classes[2].status = 'Closed';
+            selectedFlight.classes[3].status = 'Closed';
+            updateDetails();
+            closePopup();
+            document.getElementById('ai-query').value = '';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

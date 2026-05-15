@@ -1,0 +1,96 @@
+from __future__ import annotations
+import uuid
+from datetime import datetime
+from sqlalchemy.orm import Session
+
+from app.models.models import AiRecommendation, RecommendationStatus, ChangeType, FareTier
+from app.repositories.fare_repository import FareRepository
+from app.repositories.price_history_repository import PriceHistoryRepository
+from app.schemas.schemas import (
+    AiRecommendationSchema, ApprovalResponse, RejectionResponse,
+    StrategyAnalysisSchema,
+)
+from ai_engine.mock_ai_engine import MockAiEngine
+
+
+class AiRecommendationService:
+    def __init__(self, db: Session):
+        self.db = db
+        self.fare_repo = FareRepository(db)
+        self.history_repo = PriceHistoryRepository(db)
+        self.ai_engine = MockAiEngine()
+
+    def get_recommendations(self, route_id: str | None = None) -> list[AiRecommendationSchema]:
+        query = self.db.query(AiRecommendation)
+        recs = query.order_by(AiRecommendation.created_at.desc()).all()
+        result = []
+        for rec in recs:
+            flight = self.fare_repo.get_flight_by_id(rec.flight_id)
+            result.append(
+                AiRecommendationSchema(
+                    recommendation_id=rec.id,
+                    flight_id=rec.flight_id,
+                    flight_number=flight.flight_number if flight else rec.flight_id,
+                    route=flight.route_id if flight else "",
+                    departure_time=flight.departure_time if flight else "",
+                    class_code=rec.class_code,
+                    tier="economy_full",
+                    current_price=rec.current_price,
+                    recommended_price=rec.recommended_price,
+                    rationale=rec.rationale,
+                    change_percent=rec.change_percent,
+                    confidence=rec.confidence,
+                    predicted_load_factor=rec.predicted_load_factor,
+                    requires_manual_approval=True,
+                    status=rec.status.value,
+                    created_at=rec.created_at.isoformat(),
+                )
+            )
+        return result
+
+    def approve_recommendation(self, recommendation_id: str, approved_by: str) -> ApprovalResponse:
+        rec = self.db.query(AiRecommendation).filter(AiRecommendation.id == recommendation_id).first()
+        if rec is None:
+            raise ValueError(f"Recommendation not found: {recommendation_id}")
+        if rec.status != RecommendationStatus.PENDING:
+            raise ValueError(f"Recommendation is not pending: {rec.status}")
+        fare_tier = self.fare_repo.get_fare_tier(rec.flight_id, rec.class_code)
+        if fare_tier:
+            old_price = fare_tier.current_price
+            fare_tier.current_price = rec.recommended_price
+            self.fare_repo.update_fare_tier(fare_tier)
+            self.history_repo.create(
+                fare_tier_id=fare_tier.id,
+                change_type=ChangeType.AI,
+                price_before=old_price,
+                price_after=rec.recommended_price,
+                changed_by=approved_by,
+            )
+        rec.status = RecommendationStatus.APPROVED
+        self.db.commit()
+        return ApprovalResponse(
+            recommendation_id=recommendation_id,
+            status="approved",
+            updated_price=rec.recommended_price,
+        )
+
+    def reject_recommendation(self, recommendation_id: str, rejected_by: str) -> RejectionResponse:
+        rec = self.db.query(AiRecommendation).filter(AiRecommendation.id == recommendation_id).first()
+        if rec is None:
+            raise ValueError(f"Recommendation not found: {recommendation_id}")
+        rec.status = RecommendationStatus.REJECTED
+        self.db.commit()
+        return RejectionResponse(recommendation_id=recommendation_id, status="rejected")
+
+    def request_strategy_analysis(self, issue_text: str, route_id: str, flight_id: str) -> StrategyAnalysisSchema:
+        flight = self.fare_repo.get_flight_by_id(flight_id)
+        tiers = self.fare_repo.get_fare_tiers_by_flight(flight_id) if flight else []
+        rec_price = min((t.ai_recommended_price or t.current_price for t in tiers), default=0)
+        result = self.ai_engine.analyze_strategy(issue_text, {"route": route_id, "flight_id": flight_id})
+        return StrategyAnalysisSchema(
+            strategy_id=str(uuid.uuid4()),
+            description=result.get("description", f'"{issue_text}" 분석 결과 — 즉각 운임 조정 권고'),
+            flight_id=flight_id,
+            recommended_price=result.get("recommended_price", rec_price),
+            created_at=datetime.utcnow().isoformat(),
+        )

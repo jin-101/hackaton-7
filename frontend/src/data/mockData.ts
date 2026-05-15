@@ -143,18 +143,57 @@ export const aiRecommendations: AiRecommendation[] = [
 ];
 
 export const competitorPrices: CompetitorPrice[] = [
-  { route: "GMP-CJU", airline: "항공사 A", bookingClass: "Y", fare: 162000, date: "2026-05-20" },
-  { route: "GMP-CJU", airline: "항공사 B", bookingClass: "Y", fare: 155000, date: "2026-05-20" },
-  { route: "GMP-CJU", airline: "항공사 A", bookingClass: "M", fare: 112000, date: "2026-05-20" },
-  { route: "GMP-CJU", airline: "항공사 B", bookingClass: "M", fare: 105000, date: "2026-05-20" },
-  { route: "GMP-CJU", airline: "항공사 A", bookingClass: "Q", fare: 62000, date: "2026-05-20" },
-  { route: "GMP-CJU", airline: "항공사 B", bookingClass: "Q", fare: 53000, date: "2026-05-20" },
-  { route: "GMP-PUS", airline: "항공사 A", bookingClass: "Y", fare: 142000, date: "2026-05-20" },
-  { route: "GMP-PUS", airline: "항공사 B", bookingClass: "Y", fare: 138000, date: "2026-05-20" },
-  { route: "GMP-PUS", airline: "항공사 A", bookingClass: "Q", fare: 48000, date: "2026-05-20" },
-  { route: "GMP-PUS", airline: "항공사 B", bookingClass: "Q", fare: 45000, date: "2026-05-20" },
-  { route: "ICN-CJU", airline: "항공사 A", bookingClass: "Y", fare: 168000, date: "2026-05-20" },
-  { route: "ICN-CJU", airline: "항공사 B", bookingClass: "Y", fare: 161000, date: "2026-05-20" },
+  // GMP-CJU — KE 기준: F=313000, C=190000, Y=121000, V=71000
+  { route: "GMP-CJU", airline: "아시아나항공", bookingClass: "F", fare: 298000, date: "2026-05-20" },
+  { route: "GMP-CJU", airline: "아시아나항공", bookingClass: "C", fare: 178000, date: "2026-05-20" },
+  { route: "GMP-CJU", airline: "아시아나항공", bookingClass: "Y", fare: 115000, date: "2026-05-20" },
+  { route: "GMP-CJU", airline: "아시아나항공", bookingClass: "V", fare: 67000, date: "2026-05-20" },
+  { route: "GMP-CJU", airline: "제주항공",   bookingClass: "Y", fare: 98000,  date: "2026-05-20" },
+  { route: "GMP-CJU", airline: "제주항공",   bookingClass: "V", fare: 52000,  date: "2026-05-20" },
+  { route: "GMP-CJU", airline: "진에어",     bookingClass: "Y", fare: 95000,  date: "2026-05-20" },
+  { route: "GMP-CJU", airline: "진에어",     bookingClass: "V", fare: 49000,  date: "2026-05-20" },
+  { route: "GMP-CJU", airline: "에어부산",   bookingClass: "Y", fare: 92000,  date: "2026-05-20" },
+  { route: "GMP-CJU", airline: "에어부산",   bookingClass: "V", fare: 47000,  date: "2026-05-20" },
+  // GMP-PUS — KE 기준: F=245000, C=149000, Y=95000, V=56000
+  { route: "GMP-PUS", airline: "아시아나항공", bookingClass: "F", fare: 232000, date: "2026-05-20" },
+  { route: "GMP-PUS", airline: "아시아나항공", bookingClass: "C", fare: 140000, date: "2026-05-20" },
+  { route: "GMP-PUS", airline: "아시아나항공", bookingClass: "Y", fare: 90000,  date: "2026-05-20" },
+  { route: "GMP-PUS", airline: "아시아나항공", bookingClass: "V", fare: 52000,  date: "2026-05-20" },
+  { route: "GMP-PUS", airline: "제주항공",   bookingClass: "Y", fare: 76000,  date: "2026-05-20" },
+  { route: "GMP-PUS", airline: "제주항공",   bookingClass: "V", fare: 40000,  date: "2026-05-20" },
+  { route: "GMP-PUS", airline: "진에어",     bookingClass: "Y", fare: 74000,  date: "2026-05-20" },
+  { route: "GMP-PUS", airline: "진에어",     bookingClass: "V", fare: 38000,  date: "2026-05-20" },
+  { route: "GMP-PUS", airline: "에어부산",   bookingClass: "Y", fare: 72000,  date: "2026-05-20" },
+  { route: "GMP-PUS", airline: "에어부산",   bookingClass: "V", fare: 37000,  date: "2026-05-20" },
+  // ICN-CJU — KE 기준: F=299000, C=181000, Y=116000, V=68000
+  { route: "ICN-CJU", airline: "아시아나항공", bookingClass: "F", fare: 285000, date: "2026-05-20" },
+  { route: "ICN-CJU", airline: "아시아나항공", bookingClass: "C", fare: 170000, date: "2026-05-20" },
+  { route: "ICN-CJU", airline: "아시아나항공", bookingClass: "Y", fare: 110000, date: "2026-05-20" },
+  { route: "ICN-CJU", airline: "아시아나항공", bookingClass: "V", fare: 64000,  date: "2026-05-20" },
+  { route: "ICN-CJU", airline: "제주항공",   bookingClass: "Y", fare: 94000,  date: "2026-05-20" },
+  { route: "ICN-CJU", airline: "제주항공",   bookingClass: "V", fare: 50000,  date: "2026-05-20" },
+  { route: "ICN-CJU", airline: "진에어",     bookingClass: "Y", fare: 91000,  date: "2026-05-20" },
+  { route: "ICN-CJU", airline: "진에어",     bookingClass: "V", fare: 47000,  date: "2026-05-20" },
+  { route: "ICN-CJU", airline: "에어부산",   bookingClass: "Y", fare: 88000,  date: "2026-05-20" },
+  { route: "ICN-CJU", airline: "에어부산",   bookingClass: "V", fare: 45000,  date: "2026-05-20" },
+  // ICN-PUS — KE 기준: F=239000, C=145000, Y=93000, V=55000
+  { route: "ICN-PUS", airline: "아시아나항공", bookingClass: "F", fare: 228000, date: "2026-05-20" },
+  { route: "ICN-PUS", airline: "아시아나항공", bookingClass: "C", fare: 136000, date: "2026-05-20" },
+  { route: "ICN-PUS", airline: "아시아나항공", bookingClass: "Y", fare: 88000,  date: "2026-05-20" },
+  { route: "ICN-PUS", airline: "아시아나항공", bookingClass: "V", fare: 51000,  date: "2026-05-20" },
+  { route: "ICN-PUS", airline: "제주항공",   bookingClass: "Y", fare: 75000,  date: "2026-05-20" },
+  { route: "ICN-PUS", airline: "제주항공",   bookingClass: "V", fare: 39000,  date: "2026-05-20" },
+  { route: "ICN-PUS", airline: "진에어",     bookingClass: "Y", fare: 73000,  date: "2026-05-20" },
+  { route: "ICN-PUS", airline: "진에어",     bookingClass: "V", fare: 38000,  date: "2026-05-20" },
+  // GMP-TAE — KE 기준: F=218000, C=132000, Y=84000, V=50000
+  { route: "GMP-TAE", airline: "아시아나항공", bookingClass: "F", fare: 207000, date: "2026-05-20" },
+  { route: "GMP-TAE", airline: "아시아나항공", bookingClass: "C", fare: 124000, date: "2026-05-20" },
+  { route: "GMP-TAE", airline: "아시아나항공", bookingClass: "Y", fare: 80000,  date: "2026-05-20" },
+  { route: "GMP-TAE", airline: "아시아나항공", bookingClass: "V", fare: 46000,  date: "2026-05-20" },
+  { route: "GMP-TAE", airline: "진에어",     bookingClass: "Y", fare: 68000,  date: "2026-05-20" },
+  { route: "GMP-TAE", airline: "진에어",     bookingClass: "V", fare: 36000,  date: "2026-05-20" },
+  { route: "GMP-TAE", airline: "티웨이항공", bookingClass: "Y", fare: 65000,  date: "2026-05-20" },
+  { route: "GMP-TAE", airline: "티웨이항공", bookingClass: "V", fare: 34000,  date: "2026-05-20" },
 ];
 
 export const revenueHistory: RevenueDataPoint[] = [
@@ -167,3 +206,133 @@ export const revenueHistory: RevenueDataPoint[] = [
   { date: "5/14", revenue: 58700000, bookings: 563 },
   { date: "5/15", revenue: 44300000, bookings: 425 },
 ];
+
+// ── 대시보드 전용 타입 ──────────────────────────────────────────────────────
+export type DashboardClassStatus = "Open" | "Closed" | "Sold Out";
+export type FlightStatus = "수요 급증" | "안정적" | "수요 저조" | "위험";
+
+export interface DashboardClass {
+  name: string;
+  code: string;
+  seats: number;       // 전체 좌석
+  sold: number;        // 판매 좌석
+  price: number;       // 현재 운임
+  aiPrice: number;     // AI 추천 운임
+  status: DashboardClassStatus;
+}
+
+export interface DashboardFlight {
+  id: string;
+  time: string;
+  timeSlot: "아침" | "오전" | "오후" | "저녁";
+  status: FlightStatus;
+  lf: number;          // Load Factor (%)
+  pace: string;        // 예약 페이스 (전주 대비)
+  currentPrice: number;
+  aiRecommended: number;
+  baseCost: number;
+  classes: DashboardClass[];
+  reason: string;      // AI 분석 근거
+}
+
+export interface WeekDay {
+  date: string;        // "2026-05-15"
+  label: string;       // "15일"
+  dayOfWeek: string;   // "목"
+  isToday: boolean;
+  isPeak: boolean;     // 성수기 여부
+}
+
+// 기준일로부터 7일치 날짜 생성
+export function buildWeekDays(baseDate: Date): WeekDay[] {
+  const days: WeekDay[] = [];
+  const dow = ["일", "월", "화", "수", "목", "금", "토"];
+  const peakMonths = [1, 7, 8, 12]; // 1월 설날, 7~8월 여름, 12월 연말
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(baseDate);
+    d.setDate(baseDate.getDate() + i);
+    days.push({
+      date: d.toISOString().slice(0, 10),
+      label: `${d.getDate()}일`,
+      dayOfWeek: dow[d.getDay()],
+      isToday: i === 0,
+      isPeak: peakMonths.includes(d.getMonth() + 1),
+    });
+  }
+  return days;
+}
+
+export const KE_DOMESTIC_ROUTES = [
+  "GMP-CJU", "GMP-PUS", "GMP-CJJ", "GMP-TAE", "GMP-KWJ",
+  "ICN-CJU", "ICN-PUS", "GMP-KPO", "GMP-RSU",
+];
+
+// B737-900ER: 일등석 4석 / 프레스티지석 16석 / 일반석 133석 / 특가할인 20석
+export function buildDashboardFlights(route: string): DashboardFlight[] {
+  const routeMultiplier: Record<string, number> = {
+    "GMP-CJU": 1.15, "ICN-CJU": 1.1, "GMP-PUS": 0.9,
+    "GMP-CJJ": 0.85, "GMP-TAE": 0.8, "GMP-KWJ": 0.75,
+    "ICN-PUS": 0.88, "GMP-KPO": 0.78, "GMP-RSU": 0.72,
+  };
+  const mul = routeMultiplier[route] ?? 1.0;
+  const base = Math.round(85000 * mul);
+
+  return [
+    {
+      id: "KE1201", time: "07:30", timeSlot: "아침", status: "수요 급증",
+      lf: 88, pace: "+12%",
+      currentPrice: Math.round(base * 1.24),
+      aiRecommended: Math.round(base * 1.39),
+      baseCost: Math.round(11500000 * mul),
+      classes: [
+        { name: "일등석", code: "F", seats: 4, sold: 4, price: Math.round(base * 3.2), aiPrice: Math.round(base * 3.5), status: "Sold Out" },
+        { name: "프레스티지석", code: "C", seats: 16, sold: 14, price: Math.round(base * 1.94), aiPrice: Math.round(base * 2.12), status: "Open" },
+        { name: "일반석", code: "Y", seats: 133, sold: 118, price: Math.round(base * 1.24), aiPrice: Math.round(base * 1.39), status: "Open" },
+        { name: "특가할인", code: "V", seats: 20, sold: 18, price: Math.round(base * 0.73), aiPrice: Math.round(base * 0.73), status: "Closed" },
+      ],
+      reason: "출발 7일 전, 예약 페이스가 과거 평균 대비 15% 빠름. 일등석 매진, 프레스티지석 거의 마감. 일반석 운임 즉시 인상 권고.",
+    },
+    {
+      id: "KE1205", time: "10:15", timeSlot: "오전", status: "안정적",
+      lf: 62, pace: "+2%",
+      currentPrice: base,
+      aiRecommended: base,
+      baseCost: Math.round(10800000 * mul),
+      classes: [
+        { name: "일등석", code: "F", seats: 4, sold: 1, price: Math.round(base * 3.0), aiPrice: Math.round(base * 3.0), status: "Open" },
+        { name: "프레스티지석", code: "C", seats: 16, sold: 5, price: Math.round(base * 1.82), aiPrice: Math.round(base * 1.82), status: "Open" },
+        { name: "일반석", code: "Y", seats: 133, sold: 87, price: Math.round(base * 1.12), aiPrice: Math.round(base * 1.12), status: "Open" },
+        { name: "특가할인", code: "V", seats: 20, sold: 13, price: Math.round(base * 0.68), aiPrice: Math.round(base * 0.68), status: "Open" },
+      ],
+      reason: "전형적인 비선호 시간대 패턴. 전 클래스 인벤토리 개방 유지 권고. 현재 운임 수준 적정.",
+    },
+    {
+      id: "KE1211", time: "13:45", timeSlot: "오후", status: "수요 저조",
+      lf: 45, pace: "-5%",
+      currentPrice: Math.round(base * 0.93),
+      aiRecommended: Math.round(base * 0.85),
+      baseCost: Math.round(10200000 * mul),
+      classes: [
+        { name: "일등석", code: "F", seats: 4, sold: 0, price: Math.round(base * 2.8), aiPrice: Math.round(base * 2.6), status: "Open" },
+        { name: "프레스티지석", code: "C", seats: 16, sold: 3, price: Math.round(base * 1.71), aiPrice: Math.round(base * 1.65), status: "Open" },
+        { name: "일반석", code: "Y", seats: 133, sold: 52, price: Math.round(base * 1.05), aiPrice: Math.round(base * 0.97), status: "Open" },
+        { name: "특가할인", code: "V", seats: 20, sold: 18, price: Math.round(base * 0.58), aiPrice: Math.round(base * 0.55), status: "Open" },
+      ],
+      reason: "예약 유입 속도 저조. 특가할인 클래스 공급 확대 및 일반석 운임 인하 필요. 일등석 프로모션 고려.",
+    },
+    {
+      id: "KE1223", time: "18:20", timeSlot: "저녁", status: "위험",
+      lf: 94, pace: "+20%",
+      currentPrice: Math.round(base * 1.32),
+      aiRecommended: Math.round(base * 1.59),
+      baseCost: Math.round(12000000 * mul),
+      classes: [
+        { name: "일등석", code: "F", seats: 4, sold: 4, price: Math.round(base * 3.4), aiPrice: Math.round(base * 3.8), status: "Sold Out" },
+        { name: "프레스티지석", code: "C", seats: 16, sold: 16, price: Math.round(base * 2.06), aiPrice: Math.round(base * 2.35), status: "Sold Out" },
+        { name: "일반석", code: "Y", seats: 133, sold: 129, price: Math.round(base * 1.32), aiPrice: Math.round(base * 1.59), status: "Open" },
+        { name: "특가할인", code: "V", seats: 20, sold: 16, price: Math.round(base * 0.81), aiPrice: Math.round(base * 0.81), status: "Closed" },
+      ],
+      reason: "일등석·프레스티지석 전석 매진. 일반석 잔여 4석. 특가할인 즉시 마감 후 일반석 운임 즉시 인상 필요.",
+    },
+  ];
+}

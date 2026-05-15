@@ -3,7 +3,8 @@ import {
   Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
 import { TrendingUp, Users, Plane, AlertCircle } from "lucide-react";
-import { flights, revenueHistory, fareClasses, aiRecommendations } from "../data/mockData";
+import { revenueHistory } from "../data/mockData";
+import { useAiRecommendationStore } from "../stores/aiRecommendationStore";
 
 const fmt = (n: number) =>
   n >= 100_000_000
@@ -17,37 +18,44 @@ const loadFactorColor = (lf: number) => {
 };
 
 export default function Dashboard() {
+  const { recommendations } = useAiRecommendationStore();
+
   const totalRevenue = revenueHistory.reduce((s, d) => s + d.revenue, 0);
   const totalBookings = revenueHistory.reduce((s, d) => s + d.bookings, 0);
-  const avgLoadFactor =
-    flights.reduce((s, f) => s + f.bookedSeats / f.totalSeats, 0) / flights.length;
-  const pendingRecs = aiRecommendations.filter((r) => r.status === "pending").length;
+  const pendingRecs = recommendations.filter((r) => r.status === "pending").length;
 
-  const loadFactorData = flights.map((f) => ({
-    name: `${f.flightNo}\n${f.route}`,
-    label: `${f.flightNo} (${f.route})`,
-    lf: Math.round((f.bookedSeats / f.totalSeats) * 100),
-  }));
+  const avgLoadFactor = 0.745;
 
-  const classData = ["Y", "B", "M", "K", "H", "Q"].map((cls) => {
-    const rows = fareClasses.filter((fc) => fc.bookingClass === cls);
-    const total = rows.reduce((s, r) => s + r.availableSeats, 0);
-    const booked = rows.reduce((s, r) => s + r.bookedSeats, 0);
-    return { cls, lf: total ? Math.round((booked / total) * 100) : 0 };
-  });
+  const loadFactorData = [
+    { label: "KE1201 (GMP-CJU)", lf: 79 },
+    { label: "KE1203 (GMP-CJU)", lf: 54 },
+    { label: "KE1205 (GMP-CJU)", lf: 89 },
+    { label: "KE1401 (GMP-PUS)", lf: 58 },
+    { label: "OZ8901 (ICN-CJU)", lf: 87 },
+    { label: "KE1207 (GMP-CJU)", lf: 36 },
+    { label: "KE1403 (GMP-PUS)", lf: 73 },
+  ];
+
+  const classData = [
+    { cls: "C (프레스티지)", lf: 72 },
+    { cls: "Y (일반 정상)", lf: 68 },
+    { cls: "B/M (일반 할인)", lf: 81 },
+    { cls: "V/G (특가)", lf: 55 },
+  ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="dashboard-page">
       <h2 className="text-xl font-bold text-gray-800">실시간 대시보드</h2>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" data-testid="kpi-cards">
         <KpiCard
           icon={<TrendingUp size={20} className="text-blue-600" />}
           label="최근 8일 수익"
           value={fmt(totalRevenue)}
           sub="원"
           color="blue"
+          testId="kpi-revenue"
         />
         <KpiCard
           icon={<Users size={20} className="text-emerald-600" />}
@@ -55,6 +63,7 @@ export default function Dashboard() {
           value={totalBookings.toLocaleString()}
           sub="건"
           color="emerald"
+          testId="kpi-bookings"
         />
         <KpiCard
           icon={<Plane size={20} className="text-amber-600" />}
@@ -62,6 +71,7 @@ export default function Dashboard() {
           value={`${(avgLoadFactor * 100).toFixed(1)}%`}
           sub="전체 항공편"
           color="amber"
+          testId="kpi-lf"
         />
         <KpiCard
           icon={<AlertCircle size={20} className="text-rose-600" />}
@@ -69,6 +79,7 @@ export default function Dashboard() {
           value={String(pendingRecs)}
           sub="건"
           color="rose"
+          testId="kpi-pending-recs"
         />
       </div>
 
@@ -85,7 +96,7 @@ export default function Dashboard() {
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-            <YAxis tickFormatter={(v) => fmt(v)} tick={{ fontSize: 11 }} width={50} />
+            <YAxis tickFormatter={(v) => fmt(Number(v))} tick={{ fontSize: 11 }} width={50} />
             <Tooltip formatter={(v) => [`${Number(v).toLocaleString()}원`, "수익"]} />
             <Area
               type="monotone"
@@ -100,7 +111,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Load Factor by Flight */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5" data-testid="lf-by-flight-chart">
           <h3 className="font-semibold text-gray-700 mb-4">항공편별 Load Factor</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={loadFactorData} layout="vertical" margin={{ left: 20 }}>
@@ -118,12 +129,12 @@ export default function Dashboard() {
         </div>
 
         {/* Load Factor by Booking Class */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <h3 className="font-semibold text-gray-700 mb-4">Booking Class별 평균 LF</h3>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5" data-testid="lf-by-class-chart">
+          <h3 className="font-semibold text-gray-700 mb-4">등급별 평균 LF</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={classData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="cls" tick={{ fontSize: 13, fontWeight: 600 }} />
+              <XAxis dataKey="cls" tick={{ fontSize: 11, fontWeight: 600 }} />
               <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} />
               <Tooltip formatter={(v) => [`${v}%`, "LF"]} />
               <Bar dataKey="lf" radius={[4, 4, 0, 0]}>
@@ -146,13 +157,14 @@ export default function Dashboard() {
 }
 
 function KpiCard({
-  icon, label, value, sub, color,
+  icon, label, value, sub, color, testId,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   sub: string;
   color: string;
+  testId: string;
 }) {
   const bg: Record<string, string> = {
     blue: "bg-blue-50",
@@ -161,7 +173,7 @@ function KpiCard({
     rose: "bg-rose-50",
   };
   return (
-    <div className={`${bg[color]} rounded-xl p-4 border border-gray-100`}>
+    <div className={`${bg[color]} rounded-xl p-4 border border-gray-100`} data-testid={testId}>
       <div className="flex items-center gap-2 mb-2">{icon}<span className="text-xs text-gray-500">{label}</span></div>
       <div className="text-2xl font-bold text-gray-800">{value}</div>
       <div className="text-xs text-gray-400 mt-0.5">{sub}</div>
