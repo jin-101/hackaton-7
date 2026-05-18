@@ -17,13 +17,7 @@ const BRAND = "#002561";
 
 const fmtW = (n: number) => `₩${n.toLocaleString()}`;
 
-const classTagColor = (name: string) => {
-  if (name.includes("프레스티지")) return "bg-amber-100 text-amber-700";
-  if (name.includes("정상"))       return "bg-blue-100 text-blue-700";
-  if (name.includes("할인"))       return "bg-cyan-100 text-cyan-700";
-  if (name.includes("특가"))       return "bg-slate-100 text-slate-600";
-  return "bg-slate-200 text-slate-600";
-};
+
 const classBarColor = (name: string) => {
   if (name.includes("프레스티지")) return "bg-amber-500";
   if (name.includes("정상"))       return "bg-blue-600";
@@ -197,8 +191,11 @@ export default function FareManagement() {
   const [aiPopup, setAiPopup]           = useState<{ desc: string; recommendedPrice?: number } | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [confirmDone, setConfirmDone]   = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   // 거부는 음영 없이 배지만 표시 — 편집은 여전히 허용
   const [rejectedClasses, setRejectedClasses] = useState<Set<string>>(new Set());
+  // 확정으로 인해 AI 추천 영역만 조용히 숨기는 set (거부됨 배지 없음)
+  const [confirmedClasses, setConfirmedClasses] = useState<Set<string>>(new Set());
   const [seatAlert, setSeatAlert] = useState<string | null>(null);
   const aiRef = useRef<HTMLTextAreaElement>(null);
   const { updateFare } = useFareStore();
@@ -386,6 +383,8 @@ export default function FareManagement() {
 
   const handleConfirmInventory = async () => {
     setConfirmLoading(true);
+    setConfirmError(null);
+    let hasError = false;
     try {
       for (const cls of selectedFlight.classes) {
         await apiClient.put(`/fares/${selectedFlight.id}`, {
@@ -394,13 +393,28 @@ export default function FareManagement() {
           updated_by: "Revenue Manager",
         });
       }
-      setConfirmDone(true);
-      setTimeout(() => setConfirmDone(false), 2500);
-    } catch {
-      setConfirmDone(true);
-      setTimeout(() => setConfirmDone(false), 2500);
+    } catch (err: unknown) {
+      hasError = true;
+      const detail =
+        err instanceof Error ? err.message : "백엔드 저장 중 오류가 발생했습니다.";
+      setConfirmError(detail);
+      setTimeout(() => setConfirmError(null), 4000);
     } finally {
       setConfirmLoading(false);
+    }
+    if (!hasError) {
+      // 확정 시 미처리 AI 추천 영역만 조용히 숨김 (배지 없음)
+      setConfirmedClasses(prev => {
+        const next = new Set(prev);
+        for (const cls of selectedFlight.classes) {
+          if (cls.aiPrice !== cls.price) {
+            next.add(`${selectedFlight.id}-${cls.code}`);
+          }
+        }
+        return next;
+      });
+      setConfirmDone(true);
+      setTimeout(() => setConfirmDone(false), 2500);
     }
   };
 
@@ -436,7 +450,7 @@ export default function FareManagement() {
                   <div>
                     <h3 className="font-black text-slate-800 text-base">AI 추천 상세</h3>
                     <p className="text-[11px] text-slate-400 font-bold mt-0.5">
-                      {aiDetailPopup.flightId} · {cls.code} {cls.name} · {selectedRoute}
+                      {aiDetailPopup.flightId} · {cls.name} · {selectedRoute}
                     </p>
                   </div>
                 </div>
@@ -740,7 +754,7 @@ export default function FareManagement() {
                   {selectedDate} 운항 현황
                 </h2>
                 <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">
-                  B737-900 (C8 / Y165) · {selectedRoute}
+                  {selectedFlight.aircraft} ({selectedFlight.totalSeats}석) · {selectedRoute}
                 </p>
               </div>
               <div className="text-right">
@@ -819,7 +833,7 @@ export default function FareManagement() {
                 </span>
               </h3>
               <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-bold uppercase">
-                C8 + Y165 = 173 Seats
+                총 {selectedFlight.totalSeats} Seats
               </span>
             </div>
 
@@ -827,6 +841,7 @@ export default function FareManagement() {
               {selectedFlight.classes.map((cls) => {
                 const rejKey = `${selectedFlight.id}-${cls.code}`;
                 const isRejected = rejectedClasses.has(rejKey);
+                const isConfirmed = confirmedClasses.has(rejKey);
                 return (
                   <ClassEditCard
                     key={cls.code}
@@ -834,6 +849,7 @@ export default function FareManagement() {
                     flightId={selectedFlight.id}
                     editState={editState}
                     isRejected={isRejected}
+                    isConfirmed={isConfirmed}
                     onStartEdit={startEdit}
                     onCommit={commitEdit}
                     onCancel={() => setEditState(null)}
@@ -892,19 +908,27 @@ export default function FareManagement() {
                   />
                 </div>
               </div>
+              {confirmError && (
+                <div className="mb-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-1.5">
+                  <XCircle size={13} className="shrink-0" />
+                  <span>{confirmError}</span>
+                </div>
+              )}
               <button
                 data-testid="confirm-inventory-btn"
                 onClick={handleConfirmInventory}
                 disabled={confirmLoading}
                 className={`w-full py-3 sm:py-4 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 disabled:opacity-60 ${
-                  confirmDone ? "bg-green-500 text-white" : "text-white hover:opacity-90"
+                  confirmDone ? "bg-green-500 text-white" : confirmError ? "bg-red-500 text-white" : "text-white hover:opacity-90"
                 }`}
-                style={confirmDone ? {} : { backgroundColor: BRAND }}
+                style={confirmDone || confirmError ? {} : { backgroundColor: BRAND }}
               >
                 {confirmLoading
                   ? <><RefreshCw size={15} className="animate-spin" /> 저장 중...</>
                   : confirmDone
                   ? <><CheckCircle size={15} /> 저장 완료</>
+                  : confirmError
+                  ? <><XCircle size={15} /> 저장 실패</>
                   : <><Plane size={15} /> 인벤토리 실시간 통제 확정</>}
               </button>
             </div>
@@ -917,13 +941,14 @@ export default function FareManagement() {
 
 // ── 등급 카드 ─────────────────────────────────────────────────────────────────
 function ClassEditCard({
-  cls, flightId, editState, isRejected, onStartEdit, onCommit, onCancel, onEditChange,
+  cls, flightId, editState, isRejected, isConfirmed, onStartEdit, onCommit, onCancel, onEditChange,
   onToggleStatus, onDetailAi,
 }: {
   cls: DashboardClass;
   flightId: string;
   editState: EditState | null;
   isRejected: boolean;
+  isConfirmed: boolean;
   onStartEdit: (fid: string, code: string, field: "price" | "seats", cur: number) => void;
   onCommit: () => void;
   onCancel: () => void;
@@ -951,7 +976,7 @@ function ClassEditCard({
     cls.status === "Sold Out" ? "bg-red-200 text-red-700 cursor-not-allowed" :
                                 "bg-red-100 text-red-600";
 
-  const hasDiff = cls.aiPrice !== cls.price && !isRejected;
+  const hasDiff = cls.aiPrice !== cls.price && !isRejected && !isConfirmed;
   const aiUp = cls.aiPrice > cls.price;
   const aiDiffPct = cls.price > 0 ? Math.round(((cls.aiPrice - cls.price) / cls.price) * 100) : 0;
 
@@ -964,10 +989,7 @@ function ClassEditCard({
       {/* 헤더 */}
       <div className="flex justify-between items-start">
         <div>
-          <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${classTagColor(cls.name)}`}>
-            {cls.code}
-          </span>
-          <h4 className="text-sm font-black text-slate-800 mt-1">{cls.name}</h4>
+          <h4 className="text-sm font-black text-slate-800">{cls.name}</h4>
         </div>
         <button
           onClick={() => !toggleLocked && onToggleStatus(flightId, cls.code)}

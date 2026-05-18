@@ -73,6 +73,7 @@
 
 ### FR-03: AI 전략 분석 요청 (AI Strategy Analysis)
 - 담당자가 돌발 이슈를 자유 텍스트로 입력 (태풍, 행사, 연휴, 경쟁사 동향 등)
+- **'AI 전략 분석 시작' 버튼 클릭 시 AI model을 실제로 호출하여 응답 반환** — 하드코딩 응답 제거, 실제 AI model API 연동 필요
 - AI가 가격 변동 요인 판단 → 변경 필요 시 전략 제안 팝업 표출 (dimmed 오버레이 + 중앙 모달)
 - 제안 내용: 분석 근거 텍스트 + 가격 변동 방향 + 승인/기각 버튼
 - 담당자가 **승인(전략 적용)** 또는 **기각** 선택 후 최종 반영
@@ -95,7 +96,7 @@
   - REVENUE (현재 판매 기준)
   - COST (운항 고정비)
   - PROFIT / MARGIN % 바 게이지
-  - 인벤토리 실시간 통제 확정 버튼
+  - **인벤토리 실시간 통제 확정 버튼**: 클릭 시 백엔드 PUT /fares/{flightId} API 호출로 변경사항 저장. "FareTier not found: KE1211/C" 등 FareTier 미존재 오류 없이 모든 항공편/클래스 조합에서 정상 동작해야 함
 - **고정 하단 푸터**: Daily Est. Revenue, Avg Margin, 선택 편 요약, 전 노선 인벤토리 동기화 버튼
 
 #### KPI 및 데이터
@@ -279,3 +280,4 @@
 | jin v2 | 2026-05-18 | 총 좌석 불변 원칙, 프레스티지 좌석 잠금, Closed 자동이관 제거, Sold Out 좌석 편집 허용, 일반석 AI 재배분(증가/감소), alert 배너 | `requirements_delta_jin.md` → `requirements_delta_v3.md` 병합 |
 | jin v2 보완 | 2026-05-18 | Closed 상태 운임 수정 잠금 (priceLocked = isClosed) | `requirements_delta_v3.md` 병합 |
 | 버그수정 | 2026-05-18 | Sold Out → Open 자동 복구 누락 수정 (aiReallocateSeats delta>0 경로) | 코드 버그 수정 |
+| v3-hyunah | 2026-05-18 | 인벤토리 실시간 통제 확정 버튼 FareTier 오류 버그 수정 요건 추가, AI 전략 분석 AI model 실제 호출 요건 명확화 | `requirements_delta_v3_hyunah.md` |
