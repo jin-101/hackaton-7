@@ -424,6 +424,12 @@ export default function FareManagement() {
   const margin  = revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : "0.0";
   const soldSeats = selectedFlight.classes.reduce((s, c) => s + c.sold, 0);
 
+  // 선택 항공편에 미처리 AI 추천이 하나라도 있는지 여부
+  const hasPendingAi = selectedFlight.classes.some(c => {
+    const key = `${selectedFlight.id}-${c.code}`;
+    return c.aiPrice !== c.price && !rejectedClasses.has(key) && !confirmedClasses.has(key);
+  });
+
   return (
     <div className="space-y-0" data-testid="fare-management-page">
 
@@ -908,29 +914,33 @@ export default function FareManagement() {
                   />
                 </div>
               </div>
-              {confirmError && (
-                <div className="mb-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-1.5">
-                  <XCircle size={13} className="shrink-0" />
-                  <span>{confirmError}</span>
-                </div>
+              {hasPendingAi && (
+                <>
+                  {confirmError && (
+                    <div className="mb-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-1.5">
+                      <XCircle size={13} className="shrink-0" />
+                      <span>{confirmError}</span>
+                    </div>
+                  )}
+                  <button
+                    data-testid="confirm-inventory-btn"
+                    onClick={handleConfirmInventory}
+                    disabled={confirmLoading}
+                    className={`w-full py-3 sm:py-4 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 disabled:opacity-60 ${
+                      confirmDone ? "bg-green-500 text-white" : confirmError ? "bg-red-500 text-white" : "text-white hover:opacity-90"
+                    }`}
+                    style={confirmDone || confirmError ? {} : { backgroundColor: BRAND }}
+                  >
+                    {confirmLoading
+                      ? <><RefreshCw size={15} className="animate-spin" /> 저장 중...</>
+                      : confirmDone
+                      ? <><CheckCircle size={15} /> 저장 완료</>
+                      : confirmError
+                      ? <><XCircle size={15} /> 저장 실패</>
+                      : <><Plane size={15} /> 인벤토리 실시간 통제 확정</>}
+                  </button>
+                </>
               )}
-              <button
-                data-testid="confirm-inventory-btn"
-                onClick={handleConfirmInventory}
-                disabled={confirmLoading}
-                className={`w-full py-3 sm:py-4 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 disabled:opacity-60 ${
-                  confirmDone ? "bg-green-500 text-white" : confirmError ? "bg-red-500 text-white" : "text-white hover:opacity-90"
-                }`}
-                style={confirmDone || confirmError ? {} : { backgroundColor: BRAND }}
-              >
-                {confirmLoading
-                  ? <><RefreshCw size={15} className="animate-spin" /> 저장 중...</>
-                  : confirmDone
-                  ? <><CheckCircle size={15} /> 저장 완료</>
-                  : confirmError
-                  ? <><XCircle size={15} /> 저장 실패</>
-                  : <><Plane size={15} /> 인벤토리 실시간 통제 확정</>}
-              </button>
             </div>
           </div>
         </aside>
