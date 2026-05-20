@@ -1,7 +1,10 @@
 from __future__ import annotations
+import os
+from pathlib import Path
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 from dotenv import load_dotenv
 
@@ -47,3 +50,13 @@ app.include_router(rm_optimize.router)
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+# Serve React SPA static files (only when dist/ exists — production)
+_static_dir = Path(__file__).parent.parent.parent / "static"
+if _static_dir.exists():
+    app.mount("/assets", StaticFiles(directory=str(_static_dir / "assets")), name="assets")
+
+    @app.get("/{full_path:path}")
+    def serve_spa(full_path: str):
+        return FileResponse(str(_static_dir / "index.html"))
