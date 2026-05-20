@@ -1,5 +1,21 @@
 # AI-DLC Audit Log
 
+## [v5] Code Generation Plan — v5-changes 플랜 작성 완료
+**Timestamp**: 2026-05-20T01:45:00Z
+**User Input**: "승인 후 진행해줘"
+**AI Response**: "Workflow Planning 및 Code Generation Plan 작성 완료. aidlc-docs/construction/plans/v5-changes-code-generation-plan.md 생성. Step 1~6 + build 검증으로 구성."
+**Context**: CONSTRUCTION PHASE - Code Generation Part 1 (Planning) 완료, 승인 대기
+
+---
+
+## [v5 시작] Requirements Analysis — v5 요구사항 분석
+**Timestamp**: 2026-05-20T01:30:00Z
+**User Input**: "requirements_delta_v5.md 파일에 작성된 내용을 토대로 aidlc 방법론 프로세스대로 진행해줘. 진행과정에서 애매한 사항은 질문해줘."
+**AI Response**: "requirements_delta_v5.md 및 requirement_fix_260520.pdf 분석 완료. 확인 필요 질문 7개를 requirement-verification-questions-v5.md에 생성."
+**Context**: INCEPTION PHASE - Requirements Analysis 재개 (v5)
+
+---
+
 ## AI 전략 분석 — 실제 Claude API 기반 등급별 운임 추천 구현
 
 **Timestamp**: 2026-05-19T08:50:00Z
@@ -612,5 +628,20 @@
 **User Input**: "aidlc 방법론 대로 requirements_delta_v4.md 파일에 있는 요구사항을 개발해주고, 관련 내용을 requirements.md에 합쳐주고, 로그를 남겨줘."
 **AI Response**: "requirements_delta_v4.md 내용 분석 후 3가지 구현 완료: (1) 운임관리 Step1/Step2 화면 전환 (FareManagement.tsx), (2) 기내 좌석 배치도 SeatMap 컴포넌트 추가, (3) 백엔드 EMSRb+Dynamic Pricing 알고리즘 (backend/app/core/emsr.py, pricing.py, routers/rm_optimize.py). requirements.md FR-01·FR-01-1·버전이력 업데이트. changelog.md·audit.md 기록 완료. npm run build 통과."
 **Context**: requirements_delta_v4.md 요구사항 전체 구현 및 문서 통합
+
+---
+
+## [v5] Code Generation — v5-changes 전체 완료
+**Timestamp**: 2026-05-20T02:30:00Z
+**User Input**: "수정되고 있는거야?"
+**AI Response**: "모든 6개 스텝 구현 완료 + npm run build 성공 확인."
+**Context**: CONSTRUCTION PHASE - Code Generation Part 2 완료
+- Step 1: Dashboard 기간/노선 필터 (periodDays, dashboardRoute state, ROUTE_LF_MAP)
+- Step 2: 달력 과거 날짜 비활성화 (isPast 체크, disabled 스타일)
+- Step 3: 현재 시간 이후 운항편 필터 (IIFE in tbody, todayStr 비교)
+- Step 4: 새로고침 버튼 + 헤더 동적 날짜 (RefreshCw, buildDashboardFlights 재호출)
+- Step 5: Step2 레이아웃 개편 (col-5 SeatMap + col-7 ClassEditCard + col-12 인벤토리)
+- Step 6: 인벤토리 변경 로그 팝업 (aiReallocateSeats logMessages, inventoryLogPopup state, 모달 UI)
+- Step 7: npm run build 성공
 
 ---

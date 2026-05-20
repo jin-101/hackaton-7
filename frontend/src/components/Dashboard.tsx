@@ -1,10 +1,13 @@
+import { useState } from "react";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
 import { TrendingUp, Users, Plane, AlertCircle } from "lucide-react";
-import { revenueHistory } from "../data/mockData";
+import { revenueHistory, KE_DOMESTIC_ROUTES } from "../data/mockData";
 import { useAiRecommendationStore } from "../stores/aiRecommendationStore";
+
+const BRAND = "#002561";
 
 const fmt = (n: number) =>
   n >= 100_000_000
@@ -17,41 +20,126 @@ const loadFactorColor = (lf: number) => {
   return "#3b82f6";
 };
 
+const PERIOD_OPTIONS = [
+  { label: "1일", value: 1 },
+  { label: "3일", value: 3 },
+  { label: "7일", value: 7 },
+  { label: "10일", value: 10 },
+];
+
+// 노선별 LF Mock 데이터 (노선 필터 반영용)
+const ROUTE_LF_MAP: Record<string, { flight: { label: string; lf: number }[]; cls: { cls: string; lf: number }[] }> = {
+  "전체": {
+    flight: [
+      { label: "KE1201 (GMP-CJU)", lf: 79 },
+      { label: "KE1203 (GMP-CJU)", lf: 54 },
+      { label: "KE1205 (GMP-CJU)", lf: 89 },
+      { label: "KE1401 (GMP-PUS)", lf: 58 },
+      { label: "KE1501 (ICN-CJU)", lf: 87 },
+      { label: "KE1207 (GMP-CJU)", lf: 36 },
+      { label: "KE1403 (GMP-PUS)", lf: 73 },
+    ],
+    cls: [
+      { cls: "C (프레스티지)", lf: 72 },
+      { cls: "Y (일반 정상)", lf: 68 },
+      { cls: "M (일반 할인)", lf: 81 },
+      { cls: "V (특가)", lf: 55 },
+    ],
+  },
+  "GMP-CJU": {
+    flight: [
+      { label: "KE1201 (GMP-CJU)", lf: 79 },
+      { label: "KE1203 (GMP-CJU)", lf: 54 },
+      { label: "KE1205 (GMP-CJU)", lf: 89 },
+      { label: "KE1207 (GMP-CJU)", lf: 36 },
+    ],
+    cls: [
+      { cls: "C (프레스티지)", lf: 75 },
+      { cls: "Y (일반 정상)", lf: 71 },
+      { cls: "M (일반 할인)", lf: 85 },
+      { cls: "V (특가)", lf: 58 },
+    ],
+  },
+  "GMP-PUS": {
+    flight: [
+      { label: "KE1401 (GMP-PUS)", lf: 58 },
+      { label: "KE1403 (GMP-PUS)", lf: 73 },
+    ],
+    cls: [
+      { cls: "C (프레스티지)", lf: 65 },
+      { cls: "Y (일반 정상)", lf: 61 },
+      { cls: "M (일반 할인)", lf: 74 },
+      { cls: "V (특가)", lf: 49 },
+    ],
+  },
+};
+
+function getRouteData(route: string) {
+  return ROUTE_LF_MAP[route] ?? ROUTE_LF_MAP["전체"];
+}
+
 export default function Dashboard() {
   const { recommendations } = useAiRecommendationStore();
+  const [periodDays, setPeriodDays] = useState(1);
+  const [dashboardRoute, setDashboardRoute] = useState("전체");
 
-  const totalRevenue = revenueHistory.reduce((s, d) => s + d.revenue, 0);
-  const totalBookings = revenueHistory.reduce((s, d) => s + d.bookings, 0);
+  const filteredHistory = revenueHistory.slice(-periodDays);
+
+  const totalRevenue = filteredHistory.reduce((s, d) => s + d.revenue, 0);
+  const totalBookings = filteredHistory.reduce((s, d) => s + d.bookings, 0);
   const pendingRecs = recommendations.filter((r) => r.status === "pending").length;
-
   const avgLoadFactor = 0.745;
 
-  const loadFactorData = [
-    { label: "KE1201 (GMP-CJU)", lf: 79 },
-    { label: "KE1203 (GMP-CJU)", lf: 54 },
-    { label: "KE1205 (GMP-CJU)", lf: 89 },
-    { label: "KE1401 (GMP-PUS)", lf: 58 },
-    { label: "OZ8901 (ICN-CJU)", lf: 87 },
-    { label: "KE1207 (GMP-CJU)", lf: 36 },
-    { label: "KE1403 (GMP-PUS)", lf: 73 },
-  ];
+  const routeData = getRouteData(dashboardRoute);
+  const { flight: loadFactorData, cls: classData } = routeData;
 
-  const classData = [
-    { cls: "C (프레스티지)", lf: 72 },
-    { cls: "Y (일반 정상)", lf: 68 },
-    { cls: "B/M (일반 할인)", lf: 81 },
-    { cls: "V/G (특가)", lf: 55 },
-  ];
+  const routeLabel = dashboardRoute === "전체" ? "국내선 전체" : dashboardRoute;
+  const titleText = `${routeLabel} 판매현황 (최근 ${periodDays}일)`;
 
   return (
     <div className="space-y-6" data-testid="dashboard-page">
-      <h2 className="text-xl font-bold text-gray-800">실시간 대시보드</h2>
+      {/* 헤더 + 필터 */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-bold text-gray-800">{titleText}</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* 노선 필터 */}
+          <select
+            data-testid="dashboard-route-select"
+            value={dashboardRoute}
+            onChange={(e) => setDashboardRoute(e.target.value)}
+            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 bg-white outline-none focus:ring-2 focus:ring-blue-400"
+          >
+            <option value="전체">국내선 전체</option>
+            {KE_DOMESTIC_ROUTES.map((r) => (
+              <option key={r} value={r}>{r.replace("-", " ↔ ")}</option>
+            ))}
+          </select>
+          {/* 기간 필터 */}
+          <div className="flex rounded-lg overflow-hidden border border-slate-200">
+            {PERIOD_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                data-testid={`period-btn-${opt.value}`}
+                onClick={() => setPeriodDays(opt.value)}
+                className={`px-3 py-1.5 text-sm font-bold transition-colors ${
+                  periodDays === opt.value
+                    ? "text-white"
+                    : "bg-white text-slate-500 hover:bg-slate-50"
+                }`}
+                style={periodDays === opt.value ? { backgroundColor: BRAND } : {}}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" data-testid="kpi-cards">
         <KpiCard
           icon={<TrendingUp size={20} className="text-blue-600" />}
-          label="최근 8일 수익"
+          label={`최근 ${periodDays}일 수익`}
           value={fmt(totalRevenue)}
           sub="원"
           color="blue"
@@ -69,7 +157,7 @@ export default function Dashboard() {
           icon={<Plane size={20} className="text-amber-600" />}
           label="평균 Load Factor"
           value={`${(avgLoadFactor * 100).toFixed(1)}%`}
-          sub="전체 항공편"
+          sub={routeLabel}
           color="amber"
           testId="kpi-lf"
         />
@@ -85,9 +173,11 @@ export default function Dashboard() {
 
       {/* Revenue Trend */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-        <h3 className="font-semibold text-gray-700 mb-4">수익 추이 (최근 8일)</h3>
+        <h3 className="font-semibold text-gray-700 mb-4">
+          수익 추이 ({routeLabel} · 최근 {periodDays}일)
+        </h3>
         <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={revenueHistory}>
+          <AreaChart data={filteredHistory}>
             <defs>
               <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
@@ -112,7 +202,9 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Load Factor by Flight */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5" data-testid="lf-by-flight-chart">
-          <h3 className="font-semibold text-gray-700 mb-4">항공편별 Load Factor</h3>
+          <h3 className="font-semibold text-gray-700 mb-4">
+            항공편별 Load Factor ({routeLabel})
+          </h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={loadFactorData} layout="vertical" margin={{ left: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
@@ -130,7 +222,9 @@ export default function Dashboard() {
 
         {/* Load Factor by Booking Class */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5" data-testid="lf-by-class-chart">
-          <h3 className="font-semibold text-gray-700 mb-4">등급별 평균 LF</h3>
+          <h3 className="font-semibold text-gray-700 mb-4">
+            등급별 평균 LF ({routeLabel})
+          </h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={classData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />

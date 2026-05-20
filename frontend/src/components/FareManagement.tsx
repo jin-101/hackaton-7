@@ -112,7 +112,7 @@ function aiReallocateSeats(
   classes: DashboardClass[],
   targetCode: string,
   newSeats: number,
-): { classes: DashboardClass[]; error?: string } {
+): { classes: DashboardClass[]; error?: string; logMessages?: string[] } {
   const target = classes.find(c => c.code === targetCode)!;
 
   if (target.status === "Closed") {
@@ -228,7 +228,27 @@ function aiReallocateSeats(
 
   console.groupEnd();
 
-  return { classes: updated };
+  // 경영층 친화적 변경 이유 로그 생성
+  const logMessages: string[] = [];
+  logMessages.push(
+    `[인벤토리 조정] ${target.name}(${target.code}) ${Math.abs(delta)}석 ${delta > 0 ? "증가" : "감소"} (${target.seats}석 → ${newSeats}석)`
+  );
+  inputs.forEach((inp, k) => {
+    const orig = eligible.find(e => e.c.code === inp.code)!;
+    const diff = buckets[k] - orig.c.seats;
+    if (diff !== 0) {
+      const direction = diff > 0 ? "증가" : "감소";
+      const reason = diff > 0
+        ? `수익 기여도가 높아 좌석 공급 확대 (운임 ${inp.price.toLocaleString()}원)`
+        : `기존 공급 대비 수요 여유 — 효율적 축소 (운임 ${inp.price.toLocaleString()}원)`;
+      logMessages.push(
+        `  → ${orig.c.name}(${orig.c.code}): ${orig.c.seats}석 → ${buckets[k]}석 (${Math.abs(diff)}석 ${direction}) | ${reason}`
+      );
+    }
+  });
+  logMessages.push(`[근거] EMSRb 알고리즘: 전체 좌석 ${classes.reduce((s, c) => s + c.seats, 0)}석 불변 원칙 하에 기대 수요·운임 기준 수익 극대화 배분`);
+
+  return { classes: updated, logMessages };
 }
 
 export default function FareManagement() {
@@ -272,6 +292,7 @@ export default function FareManagement() {
   // 확정으로 인해 AI 추천 영역만 조용히 숨기는 set (거부됨 배지 없음)
   const [confirmedClasses, setConfirmedClasses] = useState<Set<string>>(new Set());
   const [seatAlert, setSeatAlert] = useState<string | null>(null);
+  const [inventoryLogPopup, setInventoryLogPopup] = useState<{ messages: string[]; flightId: string } | null>(null);
   const [step, setStep] = useState<"list" | "detail">("list");
   const aiRef = useRef<HTMLTextAreaElement>(null);
   const { updateFare } = useFareStore();
@@ -381,7 +402,7 @@ export default function FareManagement() {
     }
 
     const newSeats = Math.max(num, targetCls.sold); // sold 보다 작아질 수 없음
-    const { classes: newClasses, error } = aiReallocateSeats(flight.classes, editState.classCode, newSeats);
+    const { classes: newClasses, error, logMessages } = aiReallocateSeats(flight.classes, editState.classCode, newSeats);
     if (error) {
       setSeatAlert(error);
       setTimeout(() => setSeatAlert(null), 4000);
@@ -394,6 +415,9 @@ export default function FareManagement() {
     );
     setFlights(updated);
     syncSelected(updated);
+    if (logMessages && logMessages.length > 0) {
+      setInventoryLogPopup({ messages: logMessages, flightId: editState.flightId });
+    }
     setEditState(null);
   };
 
@@ -711,6 +735,62 @@ export default function FareManagement() {
         );
       })()}
 
+      {/* 인벤토리 변경 이력 팝업 */}
+      {inventoryLogPopup && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.50)" }}
+          onClick={() => setInventoryLogPopup(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 flex justify-between items-center bg-slate-800">
+              <div className="flex items-center gap-2">
+                <LayoutGrid size={17} className="text-white" />
+                <h3 className="font-black text-white text-sm tracking-tight">인벤토리 변경 이력</h3>
+                <span className="text-[10px] text-slate-300 font-bold">{inventoryLogPopup.flightId}</span>
+              </div>
+              <button
+                onClick={() => setInventoryLogPopup(null)}
+                className="text-slate-300 hover:text-white transition-colors"
+              >
+                <XCircle size={18} />
+              </button>
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-[11px] text-slate-500 font-bold mb-3 uppercase tracking-wider">EMSRb 알고리즘 기반 좌석 재배분 결과</p>
+              <ul className="space-y-2">
+                {inventoryLogPopup.messages.map((msg, i) => (
+                  <li key={i} className={`text-xs font-medium rounded-lg px-3 py-2 ${
+                    msg.startsWith("[인벤토리")
+                      ? "bg-blue-50 text-blue-800 font-black"
+                      : msg.startsWith("[근거]")
+                      ? "bg-amber-50 text-amber-800 border border-amber-200"
+                      : "bg-slate-50 text-slate-700"
+                  }`}>
+                    {msg}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[10px] text-slate-400 mt-3 leading-relaxed">
+                * 총 좌석 수 불변 원칙 하에 수익 극대화 방향으로 자동 재배분되었습니다.
+              </p>
+            </div>
+            <div className="px-5 pb-4 flex justify-end">
+              <button
+                onClick={() => setInventoryLogPopup(null)}
+                className="px-4 py-2 rounded-lg font-black text-sm text-white transition-all hover:opacity-90"
+                style={{ backgroundColor: BRAND }}
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* AI 전략 분석 결과 모달 */}
       {aiPopup && (
         <div
@@ -998,19 +1078,20 @@ export default function FareManagement() {
                         {monthDays.map((d, i) => {
                           const isSelected = selectedDate === d.date;
                           const isToday = d.date === todayStr;
+                          const isPast = d.date < todayStr;
                           const dow = i % 7;
                           return (
                             <button
                               key={d.date}
-                              onClick={() => { if (d.inMonth) { changeDate(d.date); setShowCalendar(false); } }}
-                              disabled={!d.inMonth}
+                              onClick={() => { if (d.inMonth && !isPast) { changeDate(d.date); setShowCalendar(false); } }}
+                              disabled={!d.inMonth || isPast}
                               className={`py-1.5 text-[10px] font-bold transition-all
-                                ${!d.inMonth ? "text-slate-200 cursor-default" : ""}
-                                ${d.inMonth && !isSelected ? "hover:bg-blue-50" : ""}
+                                ${!d.inMonth || isPast ? "text-slate-200 cursor-default" : ""}
+                                ${d.inMonth && !isPast && !isSelected ? "hover:bg-blue-50" : ""}
                                 ${isSelected ? "text-white rounded-sm" : ""}
                                 ${isToday && !isSelected ? "underline" : ""}
-                                ${d.inMonth && dow === 0 && !isSelected ? "text-red-400" : ""}
-                                ${d.inMonth && dow === 6 && !isSelected ? "text-blue-500" : ""}
+                                ${d.inMonth && !isPast && dow === 0 && !isSelected ? "text-red-400" : ""}
+                                ${d.inMonth && !isPast && dow === 6 && !isSelected ? "text-blue-500" : ""}
                               `}
                               style={isSelected ? { backgroundColor: BRAND } : {}}
                             >
@@ -1032,15 +1113,20 @@ export default function FareManagement() {
                       {buildWeekAroundDate(displayedDate).map((d, idx) => {
                         const isSelected = selectedDate === d.date;
                         const isCenter = idx === 3;
+                        const isPast = d.date < todayStr;
                         return (
                           <button
                             key={d.date}
+                            disabled={isPast}
                             onClick={() => {
+                              if (isPast) return;
                               const dir = idx < 3 ? "right" : idx > 3 ? "left" : undefined;
                               changeDate(d.date, dir);
                             }}
                             className={`flex flex-col items-center py-2 rounded-lg text-[10px] font-black border transition-colors duration-150 ${
-                              isSelected
+                              isPast
+                                ? "bg-slate-50 border-slate-100 text-slate-300 cursor-default"
+                                : isSelected
                                 ? "text-white border-[#002561]"
                                 : isCenter && !isSelected
                                 ? "bg-blue-50 border-blue-200 text-blue-700"
@@ -1048,11 +1134,11 @@ export default function FareManagement() {
                                 ? "bg-blue-50 border-blue-200 text-blue-700"
                                 : "bg-white border-slate-100 text-slate-500 hover:border-blue-300"
                             }`}
-                            style={isSelected ? { backgroundColor: BRAND } : {}}
+                            style={isSelected && !isPast ? { backgroundColor: BRAND } : {}}
                           >
                             <span className="text-[8px] opacity-70">{d.dayOfWeek}</span>
                             <span>{d.date.slice(8)}</span>
-                            {d.isPeak && <span className="text-[7px] text-amber-500 font-bold">성수기</span>}
+                            {d.isPeak && !isPast && <span className="text-[7px] text-amber-500 font-bold">성수기</span>}
                           </button>
                         );
                       })}
@@ -1072,17 +1158,36 @@ export default function FareManagement() {
                 <div className="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-end flex-wrap gap-2">
                   <div>
                     <h2 className="text-base sm:text-xl font-black text-slate-800 tracking-tight">
-                      {selectedDate} 운항 현황
+                      {selectedDate} 운항편 판매현황 <span className="text-sm font-bold text-slate-500">(현재기준)</span>
                     </h2>
                     <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">
                       {selectedFlight.aircraft} ({selectedFlight.totalSeats}석) · {selectedRoute}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <span className="text-[10px] font-black text-slate-400 block mb-1 uppercase">Selected</span>
-                    <span className="text-sm sm:text-lg font-black" style={{ color: BRAND }}>
-                      {selectedFlight.id} / {selectedFlight.time}
-                    </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      data-testid="fare-refresh-btn"
+                      onClick={() => {
+                        const base = buildDashboardFlights(selectedRoute, selectedDate);
+                        const routeMap = crossRouteAiPrices[selectedRoute];
+                        const refreshed = base.map(f => {
+                          const flightMap = routeMap?.[f.id];
+                          if (!flightMap) return f;
+                          return { ...f, classes: f.classes.map(c => flightMap[c.code] != null ? { ...c, price: flightMap[c.code] } : c) };
+                        });
+                        setFlights(refreshed);
+                        setSelectedFlight(refreshed.find(f => f.id === selectedFlight.id) ?? refreshed[0]);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-all"
+                    >
+                      <RefreshCw size={12} /> 새로고침
+                    </button>
+                    <div className="text-right">
+                      <span className="text-[10px] font-black text-slate-400 block mb-1 uppercase">Selected</span>
+                      <span className="text-sm sm:text-lg font-black" style={{ color: BRAND }}>
+                        {selectedFlight.id} / {selectedFlight.time}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div className="overflow-x-auto">
@@ -1097,55 +1202,73 @@ export default function FareManagement() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {flights.map((f) => {
-                        const isSelected = f.id === selectedFlight.id;
-                        const paceUp = f.pace.startsWith("+");
-                        const aiLabel = aiSuggestionLabel(f.currentPrice, f.aiRecommended);
-                        const hasCrossAi = !!crossRouteAiPrices[selectedRoute]?.[f.id];
-                        return (
-                          <tr
-                            key={f.id}
-                            onClick={() => { setSelectedFlight(f); setStep("detail"); }}
-                            className={`cursor-pointer transition-all hover:bg-blue-50/60 ${
-                              isSelected ? "bg-blue-50/80 border-l-4 border-[#002561]" : "border-l-4 border-transparent"
-                            }`}
-                          >
-                            <td className="px-4 sm:px-5 py-3 sm:py-4">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-black text-slate-900 text-sm">{f.id}</span>
-                                {hasCrossAi && (
-                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-[9px] font-black">
-                                    <Sparkles size={8} /> AI 적용
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-[10px] text-slate-400 font-bold">{f.time} ({f.timeSlot})</div>
-                            </td>
-                            <td className="px-4 sm:px-5 py-3 sm:py-4">
-                              <div className="flex flex-col items-center gap-1">
-                                <div className="w-14 bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                                  <div className={`h-full ${lfBarColor(f.lf)}`} style={{ width: `${f.lf}%` }} />
+                      {(() => {
+                        const now = new Date();
+                        const visibleFlights = selectedDate === todayStr
+                          ? flights.filter(f => {
+                              const [hh, mm] = f.time.split(":").map(Number);
+                              return hh * 60 + mm >= now.getHours() * 60 + now.getMinutes();
+                            })
+                          : flights;
+                        if (visibleFlights.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={5} className="px-5 py-8 text-center text-sm text-slate-400 font-bold">
+                                현재 시간 이후 운항편이 없습니다.
+                              </td>
+                            </tr>
+                          );
+                        }
+                        return visibleFlights.map((f) => {
+                          const isSelected = f.id === selectedFlight.id;
+                          const paceUp = f.pace.startsWith("+");
+                          const aiLabel = aiSuggestionLabel(f.currentPrice, f.aiRecommended);
+                          const hasCrossAi = !!crossRouteAiPrices[selectedRoute]?.[f.id];
+                          return (
+                            <tr
+                              key={f.id}
+                              onClick={() => { setSelectedFlight(f); setStep("detail"); }}
+                              className={`cursor-pointer transition-all hover:bg-blue-50/60 ${
+                                isSelected ? "bg-blue-50/80 border-l-4 border-[#002561]" : "border-l-4 border-transparent"
+                              }`}
+                            >
+                              <td className="px-4 sm:px-5 py-3 sm:py-4">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-black text-slate-900 text-sm">{f.id}</span>
+                                  {hasCrossAi && (
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-[9px] font-black">
+                                      <Sparkles size={8} /> AI 적용
+                                    </span>
+                                  )}
                                 </div>
-                                <span className="text-[11px] font-black text-slate-600">{f.lf}%</span>
-                              </div>
-                            </td>
-                            <td className="px-4 sm:px-5 py-3 sm:py-4 text-center">
-                              <span className={`text-[11px] font-black flex items-center justify-center gap-0.5 ${paceUp ? "text-red-500" : "text-blue-500"}`}>
-                                {paceUp ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                                {f.pace}
-                              </span>
-                            </td>
-                            <td className="px-4 sm:px-5 py-3 sm:py-4 font-black text-[12px]">
-                              <span className={aiLabel.color}>{aiLabel.text}</span>
-                            </td>
-                            <td className="px-4 sm:px-5 py-3 sm:py-4">
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusBadgeClass(f.status)}`}>
-                                {f.status}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                                <div className="text-[10px] text-slate-400 font-bold">{f.time} ({f.timeSlot})</div>
+                              </td>
+                              <td className="px-4 sm:px-5 py-3 sm:py-4">
+                                <div className="flex flex-col items-center gap-1">
+                                  <div className="w-14 bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                    <div className={`h-full ${lfBarColor(f.lf)}`} style={{ width: `${f.lf}%` }} />
+                                  </div>
+                                  <span className="text-[11px] font-black text-slate-600">{f.lf}%</span>
+                                </div>
+                              </td>
+                              <td className="px-4 sm:px-5 py-3 sm:py-4 text-center">
+                                <span className={`text-[11px] font-black flex items-center justify-center gap-0.5 ${paceUp ? "text-red-500" : "text-blue-500"}`}>
+                                  {paceUp ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                                  {f.pace}
+                                </span>
+                              </td>
+                              <td className="px-4 sm:px-5 py-3 sm:py-4 font-black text-[12px]">
+                                <span className={aiLabel.color}>{aiLabel.text}</span>
+                              </td>
+                              <td className="px-4 sm:px-5 py-3 sm:py-4">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusBadgeClass(f.status)}`}>
+                                  {f.status}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
                     </tbody>
                   </table>
                 </div>
@@ -1154,7 +1277,7 @@ export default function FareManagement() {
           </div>
         )}
 
-        {/* ── STEP 2: Profit Analysis(우상) + AI 전략(우하) + 좌석배치도(좌상) + 운임관리(좌하) ── */}
+        {/* ── STEP 2: 좌석배치도 + 운임관리 + 인벤토리 조정 ── */}
         {step === "detail" && (
           <div className="grid grid-cols-12 gap-4 sm:gap-5">
 
@@ -1181,10 +1304,13 @@ export default function FareManagement() {
               </span>
             </div>
 
-            {/* 좌측 8/12: 등급별 운임 관리 (상) + 기내 좌석 배치도 (하) */}
-            <div className="col-span-12 lg:col-span-8 space-y-4">
-              {/* 좌석 등급별 운임 관리 */}
-              <div className="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-slate-200">
+            {/* 상단 2열: 좌석 배치도(좌) + 등급별 운임 관리(우) */}
+            <div className="col-span-12 lg:col-span-5">
+              <SeatMap flight={selectedFlight} />
+            </div>
+
+            <div className="col-span-12 lg:col-span-7">
+              <div className="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-slate-200 h-full">
                 <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
                   <h3 className="font-black text-slate-800 flex items-center gap-2 text-sm sm:text-base">
                     <LayoutGrid size={16} style={{ color: BRAND }} />
@@ -1224,111 +1350,120 @@ export default function FareManagement() {
                   })}
                 </div>
               </div>
-
-              {/* 기내 좌석 배치도 */}
-              <SeatMap flight={selectedFlight} />
             </div>
 
-            {/* 우측 4/12: Profit Analysis (상) + AI 전략 분석 요청 (하) */}
-            <aside className="col-span-12 lg:col-span-4 flex flex-col gap-4">
-              {/* Profit Analysis */}
-              <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm">
-                <h2 className="text-sm font-black text-slate-800 mb-4 flex items-center gap-2 border-b pb-3 uppercase">
-                  <BarChart4 size={16} style={{ color: BRAND }} /> Profit Analysis
-                </h2>
-                <div className="space-y-3">
-                  <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-black text-blue-600 uppercase">Revenue</span>
-                      <Coins size={13} className="text-blue-400" />
+            {/* 하단 전체 너비: 인벤토리 통제 패널 */}
+            <div className="col-span-12">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* Profit Analysis */}
+                <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm">
+                  <h2 className="text-sm font-black text-slate-800 mb-4 flex items-center gap-2 border-b pb-3 uppercase">
+                    <BarChart4 size={16} style={{ color: BRAND }} /> Profit Analysis
+                  </h2>
+                  <div className="space-y-3">
+                    <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[10px] font-black text-blue-600 uppercase">Revenue</span>
+                        <Coins size={13} className="text-blue-400" />
+                      </div>
+                      <div className="text-xl font-black" style={{ color: BRAND }}>{fmtW(revenue)}</div>
+                      <p className="text-[9px] text-blue-400 font-bold mt-1">
+                        {soldSeats}석 판매 (L/F {selectedFlight.lf}%)
+                      </p>
                     </div>
-                    <div className="text-xl font-black" style={{ color: BRAND }}>{fmtW(revenue)}</div>
-                    <p className="text-[9px] text-blue-400 font-bold mt-1">
-                      {soldSeats}석 판매 (L/F {selectedFlight.lf}%)
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[10px] font-black text-slate-500 uppercase">Cost</span>
+                        <Wallet size={13} className="text-slate-400" />
+                      </div>
+                      <div className="text-xl font-black text-slate-700">{fmtW(cost)}</div>
+                      <p className="text-[9px] text-slate-400 font-bold mt-1 uppercase">Operational Expenses</p>
+                    </div>
+                    <div className="bg-white p-3 rounded-xl border-2 border-slate-100 shadow-inner">
+                      <div className="flex justify-between items-end mb-2">
+                        <span className="text-[10px] font-black text-slate-400 uppercase">Margin</span>
+                        <span className={`text-sm font-black ${profit >= 0 ? "text-green-600" : "text-red-500"}`}>
+                          {margin}%
+                        </span>
+                      </div>
+                      <div className={`text-2xl font-black tracking-tight mb-3 ${profit >= 0 ? "text-slate-800" : "text-red-600"}`}>
+                        {fmtW(profit)}
+                      </div>
+                      <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-700 ${profit >= 0 ? "bg-green-500" : "bg-red-400"}`}
+                          style={{ width: `${Math.min(Math.abs(Number(margin)), 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 인벤토리 실시간 통제 확정 */}
+                <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                  <h2 className="text-sm font-black text-slate-800 mb-4 flex items-center gap-2 border-b pb-3 uppercase">
+                    <Plane size={16} style={{ color: BRAND }} /> 인벤토리 통제
+                  </h2>
+                  <div className="space-y-3 flex-1">
+                    <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                      AI 추천 운임 및 좌석 수 변경 사항을 시스템에 최종 반영합니다.
                     </p>
-                  </div>
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-black text-slate-500 uppercase">Cost</span>
-                      <Wallet size={13} className="text-slate-400" />
-                    </div>
-                    <div className="text-xl font-black text-slate-700">{fmtW(cost)}</div>
-                    <p className="text-[9px] text-slate-400 font-bold mt-1 uppercase">Operational Expenses</p>
-                  </div>
-                  <div className="bg-white p-3 rounded-xl border-2 border-slate-100 shadow-inner">
-                    <div className="flex justify-between items-end mb-2">
-                      <span className="text-[10px] font-black text-slate-400 uppercase">Margin</span>
-                      <span className={`text-sm font-black ${profit >= 0 ? "text-green-600" : "text-red-500"}`}>
-                        {margin}%
-                      </span>
-                    </div>
-                    <div className={`text-2xl font-black tracking-tight mb-3 ${profit >= 0 ? "text-slate-800" : "text-red-600"}`}>
-                      {fmtW(profit)}
-                    </div>
-                    <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full transition-all duration-700 ${profit >= 0 ? "bg-green-500" : "bg-red-400"}`}
-                        style={{ width: `${Math.min(Math.abs(Number(margin)), 100)}%` }}
-                      />
-                    </div>
+                    {confirmError && (
+                      <div className="px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-1.5">
+                        <XCircle size={13} className="shrink-0" />
+                        <span>{confirmError}</span>
+                      </div>
+                    )}
                   </div>
                   {hasPendingAi && (
-                    <>
-                      {confirmError && (
-                        <div className="px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-1.5">
-                          <XCircle size={13} className="shrink-0" />
-                          <span>{confirmError}</span>
-                        </div>
-                      )}
-                      <button
-                        data-testid="confirm-inventory-btn"
-                        onClick={handleConfirmInventory}
-                        disabled={confirmLoading}
-                        className={`w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 disabled:opacity-60 ${
-                          confirmDone ? "bg-green-500 text-white" : confirmError ? "bg-red-500 text-white" : "text-white hover:opacity-90"
-                        }`}
-                        style={confirmDone || confirmError ? {} : { backgroundColor: BRAND }}
-                      >
-                        {confirmLoading
-                          ? <><RefreshCw size={15} className="animate-spin" /> 저장 중...</>
-                          : confirmDone
-                          ? <><CheckCircle size={15} /> 저장 완료</>
-                          : confirmError
-                          ? <><XCircle size={15} /> 저장 실패</>
-                          : <><Plane size={15} /> 인벤토리 실시간 통제 확정</>}
-                      </button>
-                    </>
+                    <button
+                      data-testid="confirm-inventory-btn"
+                      onClick={handleConfirmInventory}
+                      disabled={confirmLoading}
+                      className={`w-full mt-4 py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 disabled:opacity-60 ${
+                        confirmDone ? "bg-green-500 text-white" : confirmError ? "bg-red-500 text-white" : "text-white hover:opacity-90"
+                      }`}
+                      style={confirmDone || confirmError ? {} : { backgroundColor: BRAND }}
+                    >
+                      {confirmLoading
+                        ? <><RefreshCw size={15} className="animate-spin" /> 저장 중...</>
+                        : confirmDone
+                        ? <><CheckCircle size={15} /> 저장 완료</>
+                        : confirmError
+                        ? <><XCircle size={15} /> 저장 실패</>
+                        : <><Plane size={15} /> 인벤토리 실시간 통제 확정</>}
+                    </button>
                   )}
                 </div>
-              </div>
 
-              {/* AI 전략 분석 요청 */}
-              <div className="rounded-xl shadow-lg text-white p-4 sm:p-5" style={{ backgroundColor: BRAND }}>
-                <h2 className="text-sm font-black mb-3 flex items-center gap-2">
-                  <Sparkles size={16} className="text-sky-300" /> AI 전략 분석 요청
-                </h2>
-                <div className="space-y-3">
-                  <textarea
-                    data-testid="ai-strategy-query"
-                    ref={aiRef}
-                    value={aiQuery}
-                    onChange={(e) => setAiQuery(e.target.value)}
-                    className="w-full h-24 p-3 bg-white/10 border border-white/20 rounded-lg text-xs placeholder:text-white/40 focus:bg-white/20 focus:outline-none resize-none font-medium"
-                    placeholder="돌발 이슈를 입력하세요&#10;(예: 태풍 보도, 대형 행사, 연휴 등)"
-                  />
-                  <button
-                    data-testid="ai-strategy-submit-btn"
-                    onClick={runAi}
-                    disabled={aiLoading || !aiQuery.trim()}
-                    className="w-full bg-sky-400 hover:bg-sky-500 disabled:opacity-50 text-[#002561] font-black py-2.5 rounded-lg text-xs flex items-center justify-center gap-2 transition-all active:scale-95"
-                  >
-                    {aiLoading
-                      ? <><RefreshCw size={13} className="animate-spin" /> 분석 중...</>
-                      : <><Send size={13} /> AI 전략 분석 시작</>}
-                  </button>
+                {/* AI 전략 분석 요청 */}
+                <div className="rounded-xl shadow-lg text-white p-4 sm:p-5" style={{ backgroundColor: BRAND }}>
+                  <h2 className="text-sm font-black mb-3 flex items-center gap-2">
+                    <Sparkles size={16} className="text-sky-300" /> AI 전략 분석 요청
+                  </h2>
+                  <div className="space-y-3">
+                    <textarea
+                      data-testid="ai-strategy-query"
+                      ref={aiRef}
+                      value={aiQuery}
+                      onChange={(e) => setAiQuery(e.target.value)}
+                      className="w-full h-24 p-3 bg-white/10 border border-white/20 rounded-lg text-xs placeholder:text-white/40 focus:bg-white/20 focus:outline-none resize-none font-medium"
+                      placeholder="돌발 이슈를 입력하세요&#10;(예: 태풍 보도, 대형 행사, 연휴 등)"
+                    />
+                    <button
+                      data-testid="ai-strategy-submit-btn"
+                      onClick={runAi}
+                      disabled={aiLoading || !aiQuery.trim()}
+                      className="w-full bg-sky-400 hover:bg-sky-500 disabled:opacity-50 text-[#002561] font-black py-2.5 rounded-lg text-xs flex items-center justify-center gap-2 transition-all active:scale-95"
+                    >
+                      {aiLoading
+                        ? <><RefreshCw size={13} className="animate-spin" /> 분석 중...</>
+                        : <><Send size={13} /> AI 전략 분석 시작</>}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </aside>
+            </div>
 
           </div>
         )}
