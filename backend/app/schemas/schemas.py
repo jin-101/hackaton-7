@@ -51,6 +51,27 @@ class FareUpdateResponse(BaseModel):
     updated_at: str
 
 
+class SeatUpdateRequest(BaseModel):
+    class_code: str
+    new_total_seats: int
+    updated_by: str = "RM"
+
+    @field_validator("new_total_seats")
+    @classmethod
+    def seats_must_be_positive(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("seats must be positive")
+        return v
+
+
+class SeatUpdateResponse(BaseModel):
+    flight_id: str
+    class_code: str
+    old_total_seats: int
+    new_total_seats: int
+    updated_at: str
+
+
 class PriceHistorySchema(BaseModel):
     id: str
     fare_tier_id: str
@@ -187,11 +208,30 @@ class EmailRequest(BaseModel):
     recipient_email: str
 
 
+class RouteRevenuePointSchema(BaseModel):
+    date: str
+    revenue: int
+    bookings: int
+
+
+class RouteLfSchema(BaseModel):
+    label: str
+    lf: float
+
+
+class ClassLfSchema(BaseModel):
+    label: str
+    lf: float
+
+
 class DashboardSummarySchema(BaseModel):
     total_revenue: int
     total_bookings: int
     avg_load_factor: float
     pending_recommendations: int
+    revenue_history: list[RouteRevenuePointSchema] = []
+    route_lf: list[RouteLfSchema] = []
+    class_lf: list[ClassLfSchema] = []
 
 
 class ClassContext(BaseModel):

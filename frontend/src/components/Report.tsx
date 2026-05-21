@@ -227,7 +227,7 @@ export default function Report() {
                           <td className="px-3 py-2 text-gray-600">2026/{d.date}</td>
                           <td className="px-3 py-2 text-right font-mono font-medium text-gray-800">{d.revenue.toLocaleString()}원</td>
                           <td className="px-3 py-2 text-right text-gray-600">{d.bookings}건</td>
-                          <td className="px-3 py-2 text-right text-gray-600">{Math.round(d.revenue / d.bookings).toLocaleString()}원</td>
+                          <td className="px-3 py-2 text-right text-gray-600">{d.bookings > 0 ? Math.round(d.revenue / d.bookings).toLocaleString() : "-"}원</td>
                         </tr>
                       ))}
                     </tbody>

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Table2, LayoutDashboard, Eye, FlaskConical, FileText, Plane, RefreshCw, Menu, X } from "lucide-react";
 import FareManagement from "./components/FareManagement";
 import Dashboard from "./components/Dashboard";
@@ -16,17 +16,34 @@ const NAV = [
 
 type PageId = (typeof NAV)[number]["id"];
 
+const PAGE_IDS = new Set<string>(NAV.map((n) => n.id));
+
+function getInitialPage(): PageId {
+  const path = window.location.pathname.replace(/^\//, "");
+  return PAGE_IDS.has(path) ? (path as PageId) : "dashboard";
+}
+
 function formatNow() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
 export default function App() {
-  const [page, setPage] = useState<PageId>("dashboard");
+  const [page, setPage] = useState<PageId>(getInitialPage);
   const [lastUpdated, setLastUpdated] = useState(formatNow);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // 브라우저 뒤로/앞으로 가기 지원
+  useEffect(() => {
+    const onPopState = () => {
+      const path = window.location.pathname.replace(/^\//, "");
+      setPage(PAGE_IDS.has(path) ? (path as PageId) : "dashboard");
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
@@ -38,6 +55,7 @@ export default function App() {
   }, []);
 
   const navigate = (id: PageId) => {
+    window.history.pushState({}, "", `/${id}`);
     setPage(id);
     setSidebarOpen(false);
   };

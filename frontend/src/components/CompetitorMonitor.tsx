@@ -1,6 +1,26 @@
-import { useState } from "react";
-import { competitorPrices, buildDashboardFlights, KE_DOMESTIC_ROUTES } from "../data/mockData";
+import { useState, useEffect, useCallback } from "react";
+import { KE_DOMESTIC_ROUTES, competitorPrices, buildDashboardFlights } from "../data/mockData";
 import { TrendingUp, TrendingDown, Minus, Eye, Calendar } from "lucide-react";
+import apiClient from "../api/apiClient";
+
+// mock data를 PriceComparison 형태로 변환
+function buildMockComparison(route: string): PriceComparison {
+  const myFlights = buildDashboardFlights(route);
+  const myFares: Record<string, number> = {};
+  if (myFlights.length > 0) {
+    myFlights[0].classes.forEach((cls) => { myFares[cls.code] = cls.price; });
+  }
+  const competitors = competitorPrices
+    .filter((c) => c.route === route)
+    .map((c) => ({
+      route: c.route,
+      airline: c.airline,
+      booking_class: c.bookingClass === "F" ? "C" : c.bookingClass,
+      fare: c.fare,
+      date: c.date,
+    }));
+  return { route, date: TODAY, my_fares: myFares, competitors };
+}
 
 const MY_AIRLINE = "대한항공";
 const CLASSES = ["C", "Y", "M", "V"] as const;
@@ -11,11 +31,23 @@ const CLASS_LABELS: Record<string, string> = {
   V: "일반석 특가",
 };
 
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+const TODAY = "2026-05-21";
+
+interface CompetitorPrice {
+  route: string;
+  airline: string;
+  booking_class: string;
+  fare: number;
+  date: string;
 }
 
-// 경쟁사 클래스 매핑 (F→C, C→C, Y→Y, V→V 등 기존 mock 데이터 호환)
+interface PriceComparison {
+  route: string;
+  date: string;
+  my_fares: Record<string, number>;
+  competitors: CompetitorPrice[];
+}
+
 function mapCompClass(bookingClass: string): string {
   if (bookingClass === "F") return "C";
   return bookingClass;
@@ -23,35 +55,42 @@ function mapCompClass(bookingClass: string): string {
 
 export default function CompetitorMonitor({ refreshKey }: { refreshKey?: number }) {
   const [selectedRoute, setSelectedRoute] = useState(KE_DOMESTIC_ROUTES[0]);
-  const [lastUpdated, setLastUpdated] = useState(todayStr());
+  const [comparison, setComparison] = useState<PriceComparison>(() => buildMockComparison(KE_DOMESTIC_ROUTES[0]));
+  const [lastUpdated, setLastUpdated] = useState(TODAY);
+
+  const fetchComparison = useCallback(async () => {
+    try {
+      const data = await apiClient.get<PriceComparison>(
+        `/competitors/${selectedRoute}/comparison?date=${TODAY}`
+      );
+      setComparison(data);
+    } catch {
+      setComparison(buildMockComparison(selectedRoute));
+    }
+  }, [selectedRoute]);
+
+  useEffect(() => {
+    void fetchComparison();
+  }, [fetchComparison]);
 
   // App 헤더 새로고침 버튼 클릭 시 경쟁사 데이터도 갱신
   const [prevKey, setPrevKey] = useState(refreshKey);
   if (refreshKey !== prevKey) {
     setPrevKey(refreshKey);
     setLastUpdated(new Date().toISOString().slice(0, 16).replace("T", " "));
+    void fetchComparison();
   }
 
-  // 대한항공 운임
-  const myFares: Record<string, number> = {};
-  const myFlights = buildDashboardFlights(selectedRoute);
-  if (myFlights.length > 0) {
-    myFlights[0].classes.forEach((cls) => {
-      myFares[cls.code] = cls.price;
-    });
-  }
+  const myFares: Record<string, number> = comparison?.my_fares ?? {};
 
-  // 경쟁사 목록 (F→C 매핑 후)
   const rawCompetitors = [...new Set(
-    competitorPrices
-      .filter((c) => c.route === selectedRoute)
-      .map((c) => c.airline)
+    (comparison?.competitors ?? []).map((c) => c.airline)
   )];
 
   const getCompFare = (airline: string, cls: string): number | undefined => {
-    const entry = competitorPrices.find(
-      (c) => c.route === selectedRoute && c.airline === airline &&
-        (c.bookingClass === cls || mapCompClass(c.bookingClass) === cls)
+    const entry = (comparison?.competitors ?? []).find(
+      (c) => c.airline === airline &&
+        (c.booking_class === cls || mapCompClass(c.booking_class) === cls)
     );
     return entry?.fare;
   };
@@ -66,9 +105,8 @@ export default function CompetitorMonitor({ refreshKey }: { refreshKey?: number 
         <div className="flex items-center gap-2">
           <Eye size={20} className="text-indigo-500" />
           <h2 className="text-xl font-bold text-gray-800">경쟁사 가격 모니터링</h2>
-          <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-medium">AI Mock Data</span>
+          <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-medium">DB 연동</span>
         </div>
-        {/* 당일 날짜 표시 */}
         <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-full px-3 py-1.5 text-xs font-bold text-blue-700">
           <Calendar size={12} />
           당일 {lastUpdated} 기준

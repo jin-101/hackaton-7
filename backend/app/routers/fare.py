@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.services.fare_service import FareService
-from app.schemas.schemas import FlightFareSchema, FareUpdateRequest, FareUpdateResponse, PriceHistorySchema
+from app.schemas.schemas import FlightFareSchema, FareUpdateRequest, FareUpdateResponse, PriceHistorySchema, SeatUpdateRequest, SeatUpdateResponse
 
 router = APIRouter(prefix="/fares", tags=["fares"])
 
@@ -20,6 +20,15 @@ def update_fare(flight_id: str, body: FareUpdateRequest, db: Session = Depends(g
     service = FareService(db)
     try:
         return service.update_fare(flight_id, body.class_code, body.new_price, body.updated_by)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/{flight_id}/seats", response_model=SeatUpdateResponse)
+def update_seats(flight_id: str, body: SeatUpdateRequest, db: Session = Depends(get_db)):
+    service = FareService(db)
+    try:
+        return service.update_seats(flight_id, body.class_code, body.new_total_seats, body.updated_by)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

@@ -4,6 +4,257 @@
 
 ---
 
+## 2026-05-21 — 등급별 평균 LF 차트 UI 개선 (수직 바 전환, 한글 레이블, 범례)
+
+**파일**: `frontend/src/components/Dashboard.tsx`, `backend/app/routers/dashboard.py`
+
+### 변경 내용
+
+#### Dashboard.tsx
+- `MOCK_CLASS_LF`: C/Y/M/V 4개 등급 × 노선별 mock 데이터로 통일 (P/B/H/K/L/Q 등 미사용 등급 제거)
+- 등급별 평균 LF 차트 방향 전환: `layout="vertical"` (수평) → 수직 `BarChart` (default)
+- X축: 등급 레이블, Y축: 0~100% — 이미지 기준 UI와 동일
+- 막대 radius: `[0,4,4,0]` → `[4,4,0,0]` (상단 모서리 둥글게)
+- 하단 색상 범례 추가: `85%+` (빨강) / `65–85%` (앰버) / `~65%` (파랑)
+
+#### dashboard.py
+- `class_lf` 집계 시 C/Y/M/V 4개 등급만 처리 (DB 실제 코드와 일치)
+- 레이블 한글화: `"C"` → `"C (프레스티지)"`, `"Y"` → `"Y (일반 정상)"`, `"M"` → `"M (일반 할인)"`, `"V"` → `"V (특가)"`
+- 순서 고정: C → Y → M → V
+
+---
+
+## 2026-05-21 — requirements_delta_v7.md 추가 요구사항 반영 및 requirements.md 통합 업데이트
+
+**파일**: `aidlc-docs/inception/requirements/requirements_delta_v7.md`, `aidlc-docs/inception/requirements/requirements.md`
+
+### requirements_delta_v7.md 추가 항목
+- **전체 (라우팅)**: `/#/` 경로 제거 → `/fares`, `/report` 등 History API 경로 라우팅 요구사항 명시
+- **대시보드**: 등급별 평균 LF 차트 복원 요구사항, 일자별 필터링 시 항공편별 LF 기간 연동 요구사항 추가
+
+### requirements.md 업데이트
+- **머릿말**: v7 Phase3~5 통합 기준 추가 (Proxy 포트 오류 수정, 등급별 LF 복원, History API 라우팅)
+- **FR-04 대시보드**: 등급별 평균 LF 차트(v7 Phase4), 항공편별 LF 기간 필터 연동(v7 Phase4) 항목 추가
+- **NFR-08 URL 라우팅**: 신규 섹션 추가 (History API, /api 접두어 통합, pushState/popstate, 폴백 규칙)
+- **변경이력 테이블**: v7 Phase1~5 항목 추가
+
+---
+
+## 2026-05-21 — 대시보드 등급별 평균 LF 복원 및 항공편별 LF 기간 필터 연동
+
+**파일**: `backend/app/schemas/schemas.py`, `backend/app/routers/dashboard.py`, `frontend/src/components/Dashboard.tsx`
+
+### 문제 1 — "Load Factor 범례" 카드 (등급별 평균 LF → 단순 색상 범례로 교체됨)
+- 오른쪽 카드가 바 차트에서 색상 설명 텍스트만 표시하는 정적 범례로 변경되어 있었음
+- 수정: `class_lf` 필드(등급별 평균 LF 배열)를 스키마·백엔드·프론트에 추가하고 바 차트로 복원
+
+### 문제 2 — 항공편별 LF가 기간 필터와 무관하게 고정 표시
+- 백엔드 `route_lf` 쿼리가 `today` 하루 고정 → 1일/3일/7일 필터를 바꿔도 동일한 데이터 반환
+- 수정: 기간 내 전체 항공편 LF를 flight_number 기준으로 평균 집계, 최대 10편 내림차순 정렬
+
+### 변경 내용
+
+#### schemas.py
+- `ClassLfSchema` 추가 (`label: str`, `lf: float`)
+- `DashboardSummarySchema`에 `class_lf: list[ClassLfSchema] = []` 필드 추가
+
+#### dashboard.py
+- `ClassLfSchema` import 추가
+- `route_lf`: `today` 고정 쿼리 → `flights`(기간 내 전체) 기준 flight_number별 LF 평균 집계 (최대 10편)
+- `class_lf`: 기간 내 `FareTier`에서 등급코드별 `sold_seats/total_seats` 평균 산출
+
+#### Dashboard.tsx
+- `DashboardSummary` 인터페이스에 `class_lf` 필드 추가
+- `MOCK_CLASS_LF` 노선별 mock 데이터 추가 (P/C/Y/M/B/H/K/L/Q 9개 등급)
+- `getMockSummary()` 반환에 `class_lf` 포함
+- "Load Factor 범례" 카드 → "등급별 평균 LF" 수직 바 차트로 복원 (`classLfData` 사용)
+
+---
+
+## 2026-05-21 — Vite proxy 포트 오류 수정 (8080 → 8000)
+
+**파일**: `frontend/vite.config.ts`
+
+### 문제
+- Vite proxy target이 `http://localhost:8080`으로 설정되어 있었으나 백엔드(FastAPI/uvicorn)는 포트 **8000**에서 실행됨
+- 모든 API 호출(`/api/*`)이 8080으로 전달되어 Connection Refused → **502 Bad Gateway** 발생
+
+### 수정
+- `proxy['/api'].target`: `'http://localhost:8080'` → `'http://localhost:8000'`
+
+---
+
+## 2026-05-21 — Path 기반 탭 URL 라우팅 (/#/ 제거)
+
+**파일**: `frontend/src/api/apiClient.ts`, `frontend/vite.config.ts`, `frontend/src/App.tsx`
+
+### 변경 내용
+
+#### apiClient.ts — API BASE_URL `/api` 접두어로 통합
+- `BASE_URL` 기본값: `''` → `'/api'`
+- 모든 API 호출이 `/api/*` 경로로 전송됨 (예: `/api/fares/GMP-CJU`)
+
+#### vite.config.ts — 단일 proxy 항목으로 통합 + path rewrite
+- 기존 7개 개별 proxy 항목(`/dashboard`, `/fares`, `/competitors`, `/reports`, `/recommendations`, `/simulation`, `/api`) → `/api` 단일 항목으로 교체
+- `rewrite: (path) => path.replace(/^\/api/, '')` 추가: Vite가 `/api/fares/GMP-CJU` → `/fares/GMP-CJU`로 변환하여 백엔드(8080)에 전달
+- 결과: `/fares`, `/report` 등 경로를 브라우저 URL로 사용해도 Vite proxy 충돌 없음
+
+#### App.tsx — hash 라우팅 → History API 라우팅 전환
+- `getInitialPage()`: `window.location.hash` → `window.location.pathname` 기반으로 탭 파싱
+- `navigate()`: `window.location.hash = \`/${id}\`` → `window.history.pushState({}, "", \`/${id}\`)`
+- `useEffect` 교체: `hashchange` + 초기 redirect 2개 → 단일 `popstate` 이벤트 리스너
+- 탭별 URL: `/dashboard`, `/fares`, `/competitor`, `/simulator`, `/report`
+- `/` 루트 진입 시 `dashboard` 폴백
+
+---
+
+## 2026-05-21 — Hash 기반 탭 URL 라우팅
+
+**파일**: `frontend/src/App.tsx`
+
+### 변경 내용
+- `PAGE_IDS` Set 및 `getInitialPage()` 헬퍼 추가: 진입 시 `window.location.hash`에서 탭 ID 파싱 (예: `#/fares` → `"fares"`)
+- `useState<PageId>(getInitialPage)`: 초기값을 hash 기반으로 변경 (이전: `"dashboard"` 하드코딩)
+- `navigate()`: `window.location.hash = \`/${id}\`` 추가로 탭 전환 시 URL hash 동기화
+- `useEffect` 2개 추가:
+  - hash 없는 최초 진입 시 `#/dashboard`로 redirect
+  - `hashchange` 이벤트 리스너로 브라우저 뒤로/앞으로 가기 지원
+- 탭별 URL: `/#/dashboard`, `/#/fares`, `/#/competitor`, `/#/simulator`, `/#/report`
+- Vite proxy 경로(`/dashboard`, `/fares` 등)와 충돌 없음 — hash `#` 이후는 서버로 전달되지 않음
+- `react-router-dom` 설치 불필요, `vite.config.ts` 수정 불필요
+
+---
+
+## 2026-05-21 — v7 Phase 4: DB 연동 후 UI 이전 상태 복원
+
+**파일**: `frontend/src/data/mockData.ts`, `frontend/src/components/FareManagement.tsx`, `frontend/src/components/Dashboard.tsx`, `frontend/src/components/Report.tsx`
+
+### 문제 및 수정 내용
+
+#### mockData.ts
+- `FLIGHT_AIRCRAFT_MAP` 상수 export 추가: flightNo → aircraft 역조회 맵 (DB 응답에서 기종명 복원용)
+
+#### FareManagement.tsx — apiFlightToDashboard() 4개 필드 누락 수정
+- `FLIGHT_AIRCRAFT_MAP` import 추가
+- `apiFlightToDashboard()` 반환 객체에 4개 필드 추가:
+  - `aircraft`: FLIGHT_AIRCRAFT_MAP[f.flight_number] 로 기종명 역조회 (기본값 "B737-800")
+  - `totalSeats`: classes 배열에서 합산 계산
+  - `currentPrice`: Y클래스 price 또는 첫 클래스 price
+  - `aiRecommended`: Y클래스 aiPrice 또는 currentPrice
+- 수정 전: Step 2 헤더 기종명 공백, "총 undefined Seats", AI 추천 컬럼 오작동
+- 수정 후: 모든 필드 정상 표시
+
+#### Dashboard.tsx — avg_load_factor 이중 나눗셈 제거
+- `avg_load_factor / 100` → `avg_load_factor` (백엔드는 이미 % 단위로 반환)
+- KPI 카드: `(avgLoadFactor * 100).toFixed(1)%` → `avgLoadFactor.toFixed(1)%`
+- 수정 전: DB 데이터 사용 시 "0.7%" 등 잘못된 LF 표시
+- 수정 후: "74.5%" 등 정상 표시
+
+#### Report.tsx — 평균단가 0 나누기 방어
+- `Math.round(d.revenue / d.bookings)` → `d.bookings > 0 ? ... : "-"` 로 방어
+- DB 데이터에 예약 없는 날짜(bookings=0) 있을 때 "Infinity원" 표시 방지
+
+---
+
+## 2026-05-21 — v7 Phase 3: Mock 폴백 복구 + Vite 프록시 설정
+
+**파일**: `frontend/src/components/CompetitorMonitor.tsx`, `frontend/src/stores/reportStore.ts`, `frontend/vite.config.ts`
+
+### 문제
+백엔드 미실행 시 API 호출 실패 → catch 블록이 `null`로 상태를 설정하여 대시보드·경쟁사 모니터링·보고서 화면에 데이터가 전혀 표출되지 않는 문제 발생
+
+### 수정 내용
+
+#### CompetitorMonitor.tsx
+- `useState<PriceComparison | null>(null)` → `useState<PriceComparison>(() => buildMockComparison(KE_DOMESTIC_ROUTES[0]))` 으로 초기값 Mock 데이터 적용
+- catch 블록: `setComparison(null)` → `setComparison(buildMockComparison(selectedRoute))` 로 수정 (API 실패 시 Mock 폴백)
+- `buildMockComparison()` 헬퍼 함수 wiring 완료 (이전에 선언만 되고 사용되지 않던 문제 해결)
+
+#### reportStore.ts
+- `generateReport()` catch 블록: `set({ reportStatus: 'idle' })` → `buildMockReport()` 결과를 `reportData`에 설정하고 `reportStatus: 'ready'`로 전환
+- `buildMockReport(route, start, end)` 헬퍼 함수 추가: 노선별 ROUTE_REVENUE/ROUTE_LF 기반 Mock ReportDTO 생성, 기간 내 일별 수익 히스토리 동적 생성
+
+#### vite.config.ts
+- `server.proxy` 설정 추가: 백엔드 포트 8080 대상
+  - `/dashboard`, `/fares`, `/competitors`, `/reports`, `/recommendations`, `/simulation`, `/api` 경로 모두 `http://localhost:8080`으로 프록시
+
+---
+
+## 2026-05-21 — v7 Phase 2: 가격·공급석 수정 즉시 DB 반영 + 경쟁사 C클래스 데이터
+
+**파일**: `backend/app/routers/fare.py`, `backend/app/services/fare_service.py`, `backend/app/schemas/schemas.py`, `backend/seed_data.py`, `frontend/src/components/FareManagement.tsx`
+
+### 백엔드 변경
+
+#### schemas.py
+- `SeatUpdateRequest` (class_code, new_total_seats, updated_by) 신규 추가
+- `SeatUpdateResponse` (flight_id, class_code, old/new_total_seats, updated_at) 신규 추가
+
+#### fare_service.py
+- `update_seats()` 메서드 신규 추가: FareTier의 total_seats 업데이트 + sold_seats 기준 status 자동 재계산
+
+#### fare.py
+- `PUT /fares/{flight_id}/seats` 엔드포인트 신규 추가
+
+#### seed_data.py + DB
+- 경쟁사 COMPETITOR_BOOKING_CLASSES에 "C" 클래스 추가 (C 클래스 가격 = base × 1.75~2.15)
+- 기존 DB에 C클래스 경쟁사 가격 2,430건 직접 INSERT (9개 노선 × 3개 항공사 × 90일)
+
+### 프론트엔드 변경
+
+#### FareManagement.tsx — commitEdit()
+- **가격 수정 즉시 DB 저장**: price field 편집 완료(Enter/blur) 시 `PUT /fares/{flightId}` API 즉시 호출 (fire-and-forget, 실패 시 console.warn)
+- **공급석 수정 즉시 DB 저장**: seats field 편집 완료 후 AI 재배분된 전 클래스에 대해 `PUT /fares/{flightId}/seats` API 즉시 호출 (fire-and-forget)
+
+---
+
+## 2026-05-21 — v7 DB 데이터 연동 (Mock → 실제 DB)
+
+**파일**: `backend/app/routers/dashboard.py`, `backend/app/schemas/schemas.py`, `backend/app/services/report_service.py`, `frontend/src/components/Dashboard.tsx`, `frontend/src/components/CompetitorMonitor.tsx`, `frontend/src/stores/reportStore.ts`, `frontend/src/components/FareManagement.tsx`
+
+### 백엔드 변경
+
+#### dashboard.py
+- `/dashboard/summary` 엔드포인트를 실제 DB 쿼리로 전면 개편
+- `route_id` (기본값 "all"), `days` (기본값 1, max 30) 쿼리 파라미터 지원
+- Flight + FareTier 테이블에서 총 수익·총 예약·평균 LF 집계
+- 일별 수익 히스토리 및 항공편별 LF 목록 반환
+
+#### schemas.py
+- `RouteRevenuePointSchema`, `RouteLfSchema` 신규 추가
+- `DashboardSummarySchema`에 `revenue_history`, `route_lf` 필드 추가
+
+#### report_service.py
+- `MOCK_ROUTE_PERFORMANCE`, `MOCK_YIELD_TREND`, `MOCK_REVENUE_HISTORY` 상수 제거
+- 노선별 성과: Flight + FareTier DB 쿼리로 실제 수익·LF 계산
+- Yield 추이: 최근 4개월 실제 판매 좌석 비율로 계산
+- AI 통계: AiRecommendation 테이블에서 approved/rejected 카운트
+- 일별 수익: 요청 기간 내 날짜별 DB 집계
+- 노선별 일일 목표 수익 상수 테이블(`ROUTE_DAILY_TARGET`) 추가
+
+### 프론트엔드 변경
+
+#### Dashboard.tsx
+- 하드코딩된 `ROUTE_REVENUE_HISTORY`, `ROUTE_PERIOD_KPI`, `ROUTE_LF_MAP` 제거
+- `GET /dashboard/summary?route_id=X&days=N` API 호출로 대체
+- `useCallback` + `useEffect`로 route/days 변경 시 자동 재조회
+
+#### CompetitorMonitor.tsx
+- `buildDashboardFlights()` + `competitorPrices` mock 제거
+- `GET /competitors/{route}/comparison?date=2026-05-21` API 호출로 대체
+- "AI Mock Data" 뱃지 → "DB 연동"으로 변경
+
+#### reportStore.ts
+- 로컬 mock 데이터(ALL_ROUTE_PERF, YIELD_BY_MONTH 등) 및 계산 함수 제거
+- `POST /reports/generate` API 호출로 대체
+- API 응답 snake_case → camelCase 매핑 처리
+
+#### FareManagement.tsx
+- 새로고침 버튼: `buildDashboardFlights()` → `GET /fares/{route}?date={date}` API 호출 (실패 시 mock fallback 유지)
+- `applyCrossRoutes()`: 각 노선 항공편도 API에서 조회 (실패 시 mock fallback 유지)
+
+---
+
 ## 2026-05-21 — v6 추가 요구사항 문서 반영
 
 **파일**: `aidlc-docs/inception/requirements/requirements_delta_v6.md`, `aidlc-docs/inception/requirements/requirements.md`

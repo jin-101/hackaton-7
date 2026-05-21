@@ -7,6 +7,7 @@ from app.repositories.price_history_repository import PriceHistoryRepository
 from app.models.models import ChangeType
 from app.schemas.schemas import (
     FlightFareSchema, BookingClassSchema, FareUpdateResponse, PriceHistorySchema,
+    SeatUpdateResponse,
 )
 
 
@@ -97,6 +98,29 @@ class FareService:
             class_code=class_code,
             old_price=old_price,
             new_price=new_price,
+            updated_at=datetime.utcnow().isoformat(),
+        )
+
+    def update_seats(self, flight_id: str, class_code: str, new_total_seats: int, updated_by: str) -> SeatUpdateResponse:
+        resolved_id = self._resolve_flight_id(flight_id)
+        fare_tier = self.fare_repo.get_fare_tier(resolved_id, class_code)
+        if fare_tier is None:
+            raise ValueError(f"FareTier not found: {flight_id}/{class_code}")
+        if new_total_seats < fare_tier.sold_seats:
+            raise ValueError(f"Cannot reduce seats below sold count ({fare_tier.sold_seats})")
+        old_total = fare_tier.total_seats
+        fare_tier.total_seats = new_total_seats
+        # update status based on new capacity
+        if fare_tier.sold_seats >= new_total_seats:
+            fare_tier.status = "sold_out"
+        elif fare_tier.status == "sold_out":
+            fare_tier.status = "open"
+        self.fare_repo.update_fare_tier(fare_tier)
+        return SeatUpdateResponse(
+            flight_id=resolved_id,
+            class_code=class_code,
+            old_total_seats=old_total,
+            new_total_seats=new_total_seats,
             updated_at=datetime.utcnow().isoformat(),
         )
 

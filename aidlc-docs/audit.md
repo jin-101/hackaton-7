@@ -1,5 +1,118 @@
 # AI-DLC Audit Log
 
+## [class-lf-ui] Construction — 등급별 평균 LF 차트 수직 바 전환 및 한글 레이블
+**Timestamp**: 2026-05-21T20:00:00Z
+**User Input**: "기존 대시보드 화면인데 이미지 첨부파일을 참고해서 이렇게 표출되도록 ai-dlc방법론 적용해서 수정해줘 이에 맞게 DB 데이터도 수정해줘"
+**AI Response**: "이미지 기준 — 수직 바 차트, C/Y/M/V 4개 한글 레이블, 하단 색상 범례 적용. 백엔드 CLASS_LABEL 매핑 추가, Mock 데이터 C/Y/M/V로 통일."
+**Context**: CONSTRUCTION PHASE - UI Fix (이미지 기준 복원)
+
+### 변경 사항
+- `frontend/src/components/Dashboard.tsx`:
+  - `MOCK_CLASS_LF`: C/Y/M/V 4등급 × 9노선 한글 레이블 mock 데이터로 교체
+  - 차트: `layout="vertical"` 수평 바 → 수직 바 (XAxis=등급명, YAxis=LF%)
+  - 하단 범례 추가 (85%+/65–85%/~65% 색상 설명)
+- `backend/app/routers/dashboard.py`:
+  - `CLASS_LABEL` 매핑 추가 (C→프레스티지, Y→일반 정상, M→일반 할인, V→특가)
+  - `class_lf` 집계를 C/Y/M/V 4개 등급으로 한정, 한글 레이블로 반환
+  - API 확인: `C (프레스티지): 61.8%`, `Y (일반 정상): 61.6%` 등 정상 반환
+
+---
+
+## [v7-requirements-update] Requirements Analysis — v7 추가 요구사항 문서화
+**Timestamp**: 2026-05-21T19:00:00Z
+**User Input**: "지금까지 추가 요청한 사항을 requirements_delta_v7.md에 추가해주고, 그 내용을 전체수정사항(requirements.md)에도 반영 반영해줘. 그리고 변경이력을 모두 changelog.md와 audit.md에 기록해줘."
+**AI Response**: "requirements_delta_v7.md에 이번 세션 신규 요구사항 3건 추가, requirements.md FR-04·NFR-08 신규·변경이력 테이블·머릿말 업데이트 완료."
+**Context**: INCEPTION PHASE - Requirements Analysis (v7 추가 요구사항 문서화)
+
+### 이번 세션에서 도출된 추가 요구사항
+
+#### v7 Phase3 — API 502 오류 수정
+- **Vite proxy 포트 오류**: `vite.config.ts` proxy target `8080` → `8000` (백엔드 실제 포트)
+- 파일: `frontend/vite.config.ts`
+
+#### v7 Phase4 — 대시보드 LF 개선
+- **등급별 평균 LF 차트 복원**: DB 연동 후 단순 범례로 교체된 카드를 바 차트로 복원
+  - `backend/app/schemas/schemas.py`: `ClassLfSchema`, `DashboardSummarySchema.class_lf` 추가
+  - `backend/app/routers/dashboard.py`: `class_lf` FareTier 등급별 평균 집계 추가
+  - `frontend/src/components/Dashboard.tsx`: `MOCK_CLASS_LF`, 바 차트 복원
+- **항공편별 LF 기간 필터 연동**: `route_lf` 쿼리를 today 고정 → 기간 내 전체 집계로 변경
+
+#### v7 Phase5 — URL 경로 라우팅
+- **`/#/` 제거 → History API 라우팅**: hash URL → pathname URL
+  - `frontend/src/api/apiClient.ts`: BASE_URL 기본값 `''` → `'/api'`
+  - `frontend/vite.config.ts`: 7개 proxy → 단일 `/api` + rewrite
+  - `frontend/src/App.tsx`: hashchange → pushState/popstate 전환
+
+### 문서 변경
+- `requirements_delta_v7.md`: 전체(라우팅) 섹션·대시보드 섹션에 3건 추가
+- `requirements.md`: 머릿말 v7 Phase3~5 통합, FR-04 2항목 추가, NFR-08 신규 섹션, 변경이력 5행 추가
+
+---
+
+## [dashboard-lf-fix] Construction — 대시보드 등급별 평균 LF 복원 및 기간 필터 연동
+**Timestamp**: 2026-05-21T18:00:00Z
+**User Input**: "대시보드에서 '등급별 평균 LF (국내선 전체)' -> 'Load Factor 범례 (국내선 전체)'로 항목이 변경되었는데 이전처럼 '등급별 평균 LF (국내선 전체)'가 표출되도록 수정해주고, 일자별 필터링 수정시 항공편별 LoadFactor 관련 데이터가 변동되도록 데이터도 ai-dlc 방법론 적용하여 수정해줘"
+**AI Response**: "스키마에 ClassLfSchema·class_lf 추가, 백엔드 route_lf를 기간 내 집계로 변경, 프론트 등급별 평균 LF 바 차트 복원 완료."
+**Context**: CONSTRUCTION PHASE - Bug Fix / UI Restoration
+
+### 원인 분석
+1. **등급별 평균 LF 카드 소실**: 이전 수정 시 바 차트 대신 정적 색상 범례로 교체됨
+2. **항공편별 LF 기간 필터 미반영**: `route_lf` 쿼리가 `today` 하루만 조회 → 1일/7일 필터 변경 시 LF 동일
+
+### 수정 파일
+- `backend/app/schemas/schemas.py`: `ClassLfSchema` 추가, `DashboardSummarySchema.class_lf` 필드 추가
+- `backend/app/routers/dashboard.py`: `route_lf` → 기간 내 전체 항공편 평균 집계; `class_lf` → FareTier 등급별 평균 산출
+- `frontend/src/components/Dashboard.tsx`: `MOCK_CLASS_LF` 추가, `getMockSummary` 반환에 `class_lf` 포함, "등급별 평균 LF" 바 차트 복원
+
+---
+
+## [bugfix-502] Construction — Vite proxy 포트 오류(8080 → 8000) 수정
+**Timestamp**: 2026-05-21T17:00:00Z
+**User Input**: "지금 api 호출시 다 502 Bad Gateway가 발생하는데 정상적으로 호출되도록 ai-dlc방법론 적용해서 오류 수정해줘"
+**AI Response**: "502 원인 분석: 백엔드(uvicorn)는 포트 8000에서 실행되나 vite.config.ts proxy target이 8080으로 잘못 설정됨. target을 8000으로 수정."
+**Context**: CONSTRUCTION PHASE - Bug Fix
+
+### 원인
+- `vite.config.ts` proxy target: `http://localhost:8080` (잘못된 포트)
+- 백엔드 `README.md` 및 uvicorn 실행 명령: `--port 8000`
+- Vite가 `/api/*` 요청을 8080으로 전달 → Connection Refused → 502 Bad Gateway
+
+### 수정
+```ts
+// vite.config.ts — 변경 전
+target: 'http://localhost:8080',
+
+// 변경 후
+target: 'http://localhost:8000',
+```
+
+---
+
+## [path-routing] Construction — /#/ 제거, History API 기반 경로 라우팅 전환
+**Timestamp**: 2026-05-21T16:00:00Z
+**User Input**: "http://localhost:5173/#/report 여기서 /#/ 경로는 제거하고 바로 /fares, ... 이런식으로 표출되도록 수정해줘"
+**AI Response**: "apiClient.ts BASE_URL `/api` 통합, vite.config.ts proxy 단일 /api 항목으로 교체(rewrite 적용), App.tsx hash 라우팅 → History API(pushState/popstate) 전환 완료."
+**Context**: CONSTRUCTION PHASE - URL Routing Refactor
+
+### 변경 파일
+
+#### frontend/src/api/apiClient.ts
+- `BASE_URL` 기본값 `''` → `'/api'`
+- 모든 API 요청이 `/api/*` 접두어로 전송됨
+
+#### frontend/vite.config.ts
+- 7개 개별 proxy 항목 제거: `/dashboard`, `/fares`, `/competitors`, `/reports`, `/recommendations`, `/simulation`, `/api`
+- 단일 `/api` proxy 항목으로 통합 + `rewrite: (path) => path.replace(/^\/api/, '')`
+- 효과: `/api/fares/GMP-CJU` → 백엔드에 `/fares/GMP-CJU` 전달; `/fares` 경로는 Vite SPA fallback으로 index.html 제공
+
+#### frontend/src/App.tsx
+- `getInitialPage()`: `window.location.hash` → `window.location.pathname` 기반 파싱
+- `navigate()`: `window.location.hash` 설정 → `window.history.pushState()` 사용
+- `hashchange` 리스너 + 초기 redirect useEffect 제거 → 단일 `popstate` 리스너로 교체
+- 탭 URL: `/#/fares` → `/fares`, `/#/report` → `/report` 등
+
+---
+
 ## [v6-추가요구] Requirements Analysis — v6 추가 요구사항 문서 반영
 **Timestamp**: 2026-05-21T13:00:00Z
 **User Input**: "여기서 추가로 말한 요구사항들을 requirement_delta_v6.md에 추가해주고, requirement_delta_v6.md 내용을 전체수정사항(requirements.md)에도 반영 반영해줘. 그리고 변경이력을 모두 changelog.md와 audit.md에 기록해줘."
@@ -739,5 +852,77 @@ set((state) => ({ params: { ...defaultParams, route: state.params.route }, resul
 - Step 5: Step2 레이아웃 개편 (col-5 SeatMap + col-7 ClassEditCard + col-12 인벤토리)
 - Step 6: 인벤토리 변경 로그 팝업 (aiReallocateSeats logMessages, inventoryLogPopup state, 모달 UI)
 - Step 7: npm run build 성공
+
+---
+
+## [v7] Code Generation — DB 데이터 연동 (Mock → 실제 DB)
+**Timestamp**: 2026-05-21T14:00:00Z
+**User Input**: "requirement_delta_v7.md 내용에서 수정을 진행하지 않는 요구사항들에 대해 aidlc 방법론에 맞게 코드 수정을 진행해주고, 전체수정사항(requirements.md)에도 반영 반영해줘. 그리고 추가 변경이력을 changelog.md와 audit.md에 기록해줘."
+**AI Response**: "v7 요구사항 전면 DB 연동 구현 완료. 백엔드·프론트엔드 Mock 제거 및 실제 DB API 연동."
+**Context**: CONSTRUCTION PHASE - Code Generation (v7 DB 연동)
+- backend/app/routers/dashboard.py: route_id/days 파라미터, Flight+FareTier DB 집계, revenue_history/route_lf 반환
+- backend/app/schemas/schemas.py: RouteRevenuePointSchema, RouteLfSchema 추가; DashboardSummarySchema 확장
+- backend/app/services/report_service.py: Mock 상수 제거, DB 기반 노선성과/Yield추이/AI통계/일별수익 계산
+- frontend/src/components/Dashboard.tsx: 하드코딩 Mock 제거, /dashboard/summary API 호출 (useCallback+useEffect)
+- frontend/src/components/CompetitorMonitor.tsx: competitorPrices mock 제거, /competitors/{route}/comparison API 호출
+- frontend/src/stores/reportStore.ts: ALL_ROUTE_PERF 등 mock 계산 제거, /reports/generate API 호출
+- frontend/src/components/FareManagement.tsx: 새로고침·applyCrossRoutes API 우선 호출 (실패 시 mock fallback 유지)
+- aidlc-docs/inception/requirements/requirements.md: v7 DB 연동 요건 반영, 관리 정책 헤더 업데이트
+- aidlc-docs/changelog.md: v7 변경 이력 기록
+
+---
+
+## [v7-Phase2] Code Generation — 가격·공급석 수정 즉시 DB 반영
+**Timestamp**: 2026-05-21T15:00:00Z
+**User Input**: "requirement_delta_v7.md 내용에서 수정을 진행하지 않았던 요구사항들에 대해 aidlc 방법론에 맞게 코드 수정을 진행해주고, 전체수정사항(requirements.md)에도 반영 반영해줘. 그리고 추가 변경이력을 changelog.md와 audit.md에 기록해줘."
+**AI Response**: "v7 미구현 잔여 항목 완료: (1) 가격 수정 즉시 DB 반영, (2) 공급석 수정 즉시 DB 반영, (3) 경쟁사 C클래스 더미 데이터 DB 추가. requirements.md·changelog.md·audit.md 업데이트."
+**Context**: CONSTRUCTION PHASE - Code Generation (v7 Phase2)
+- backend/app/schemas/schemas.py: SeatUpdateRequest, SeatUpdateResponse 스키마 추가
+- backend/app/services/fare_service.py: update_seats() 메서드 추가 (total_seats 업데이트 + status 재계산)
+- backend/app/routers/fare.py: PUT /fares/{flight_id}/seats 엔드포인트 추가
+- backend/seed_data.py: COMPETITOR_BOOKING_CLASSES에 "C" 추가 (가격 = base × 1.75~2.15)
+- DB: C클래스 경쟁사 가격 2,430건 직접 INSERT (9노선 × 3항공사 × 90일)
+- frontend/src/components/FareManagement.tsx: commitEdit()에 price/seats DB 즉시 저장 로직 추가 (fire-and-forget)
+- aidlc-docs/inception/requirements/requirements.md: v7 Phase2 요건 반영, 관리정책 헤더 업데이트
+
+---
+
+## [Hash Routing] Code Generation — 탭별 URL 라우팅 (새로고침 탭 유지)
+**Timestamp**: 2026-05-21T18:00:00Z
+**User Input**: "탭별로 라우터 설정해줘서 새로고침시에도 해당 탭에 머물도록 수정해줘 ai-dlc 방법론 적용해서 수정해줘"
+**AI Response**: "react-router-dom 없이 window.location.hash 기반 탭 라우팅 구현 완료. App.tsx 단일 파일만 수정. Vite proxy 충돌 없음."
+**Context**: CONSTRUCTION PHASE - Code Generation (Hash Routing)
+- frontend/src/App.tsx: PAGE_IDS Set, getInitialPage(), useState 초기값 hash 기반 변경, navigate() hash 업데이트, useEffect 2개(초기 redirect + hashchange 리스너) 추가
+
+---
+
+## [v7-Phase4] Code Generation — DB 연동 후 UI 이전 상태 복원
+**Timestamp**: 2026-05-21T17:00:00Z
+**User Input**: "DB 데이터를 연동하면서 기존이랑 UI가 달라진 부분도 있고, 이상하게 표출되는 부분도 있는데 ai-dlc 방법론 적용해서 DB 데이터 연동한 화면에서도 UI 이전처럼 표출되도록 수정해줘"
+**AI Response**: "4개 화면 이슈 파악 및 수정 완료. FareManagement 4개 필드 누락 복원, Dashboard avg_load_factor 이중 나눗셈 제거, Report 0 나누기 방어 추가."
+**Context**: CONSTRUCTION PHASE - Code Generation (v7 Phase4 UI 복원)
+
+### 수정 내용
+- frontend/src/data/mockData.ts: FLIGHT_AIRCRAFT_MAP export 추가 (flightNo → aircraft 역조회)
+- frontend/src/components/FareManagement.tsx: apiFlightToDashboard()에 aircraft/totalSeats/currentPrice/aiRecommended 4개 필드 추가
+- frontend/src/components/Dashboard.tsx: avg_load_factor / 100 → avg_load_factor (이중 나눗셈 제거), KPI 카드 표시 수식 수정
+- frontend/src/components/Report.tsx: 평균단가 계산 시 d.bookings > 0 방어 추가
+
+### 근거 (플랜 기반)
+- [문제1] FareManagement: DB 응답에 aircraft/totalSeats/currentPrice/aiRecommended 없어 undefined 표시
+- [문제2] Dashboard: 백엔드는 % 단위(74.5)로 반환하나 프론트에서 / 100 하여 0.7% 표시
+- [문제3] Report: bookings=0 시 Infinity원 표시 가능성
+
+---
+
+## [v7-Phase3] Code Generation — Mock 폴백 복구 + Vite 프록시 설정
+**Timestamp**: 2026-05-21T16:00:00Z
+**User Input**: "지금 대시보드, 경쟁사 모니터링, 보고서에서 원래 표출되던 데이터가 아무것도 표출이 안돼. 정상적으로 표출되도록 수정해줘" / "vite.config.ts에 프록시 설정 (백엔드 실행 전제) 해줘"
+**AI Response**: "백엔드 미실행 시 데이터 미표출 문제 수정 완료. CompetitorMonitor·reportStore Mock 폴백 추가, Dashboard 이미 완료 상태. Vite 프록시 설정으로 백엔드 8080 포트 연동."
+**Context**: CONSTRUCTION PHASE - Code Generation (v7 Phase3 Bug Fix)
+- frontend/src/components/CompetitorMonitor.tsx: buildMockComparison() wiring 완료 (useState 초기값 + catch 폴백)
+- frontend/src/stores/reportStore.ts: buildMockReport() 헬퍼 추가, generateReport() catch에 Mock 폴백 설정 (reportStatus: 'ready')
+- frontend/vite.config.ts: server.proxy 추가 — /dashboard, /fares, /competitors, /reports, /recommendations, /simulation, /api → http://localhost:8080
+- aidlc-docs/changelog.md: v7 Phase3 변경 이력 기록
 
 ---

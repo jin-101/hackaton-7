@@ -119,7 +119,7 @@ TIER_PRICE_MULT = {
 }
 
 COMPETITORS = ["아시아나항공", "제주항공", "진에어"]
-COMPETITOR_BOOKING_CLASSES = ["Y", "M", "V"]
+COMPETITOR_BOOKING_CLASSES = ["C", "Y", "M", "V"]
 
 PEAK_MONTHS = {1, 7, 8, 12}
 PEAK_DAYS = {5, 6}  # Saturday=5, Sunday=6 (isoweekday: Mon=1)
@@ -224,7 +224,9 @@ def seed():
                 for day_offset in range(90):
                     obs_date = start_date + timedelta(days=day_offset)
                     for cls in COMPETITOR_BOOKING_CLASSES:
-                        if cls == "Y":
+                        if cls == "C":
+                            fare = round(base_price * random.uniform(1.80, 2.10) / 1000) * 1000
+                        elif cls == "Y":
                             fare = round(base_price * random.uniform(0.90, 1.10) / 1000) * 1000
                         elif cls == "M":
                             fare = round(base_price * random.uniform(0.72, 0.88) / 1000) * 1000

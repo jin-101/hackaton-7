@@ -4,7 +4,7 @@
 
 > **관리 정책**: 이 파일은 항상 최신 전체 요구사항을 반영합니다.
 > 변경 시 해당 delta 파일(`requirements_delta_vN.md`)을 먼저 작성하고 이 파일에 통합하세요.
-> 마지막 통합 기준: **v1 + v2 + changelog + v3 + jin v1~v2 (좌석 로직 개편) + jin v2 보완 (Closed 운임 잠금) + 버그수정 (Sold Out→Open 복구, 2026-05-18) + v4 (Step1/2 화면 전환, 좌석 배치도, EMSRb·Dynamic Pricing, 좌석 크기·간격 개선, 2026-05-19) + v6 (실제 운항 노선 제한, 금액 콤마 표기, 반응형, 대시보드 데이터 연동, 운임관리 UI 개선, 시뮬레이터 국내선 전체, 보고서 기간 필터, 2026-05-21)**
+> 마지막 통합 기준: **v1 + v2 + changelog + v3 + jin v1~v2 (좌석 로직 개편) + jin v2 보완 (Closed 운임 잠금) + 버그수정 (Sold Out→Open 복구, 2026-05-18) + v4 (Step1/2 화면 전환, 좌석 배치도, EMSRb·Dynamic Pricing, 좌석 크기·간격 개선, 2026-05-19) + v6 (실제 운항 노선 제한, 금액 콤마 표기, 반응형, 대시보드 데이터 연동, 운임관리 UI 개선, 시뮬레이터 국내선 전체, 보고서 기간 필터, 2026-05-21) + v7 Phase1 (Dashboard/CompetitorMonitor/Report/FareManagement DB 연동, 2026-05-21) + v7 Phase2 (가격·공급석 수정 즉시 DB 반영, 경쟁사 C클래스 더미 데이터 추가, 2026-05-21) + v7 Phase3 (Vite proxy 포트 오류 수정 8080→8000, API 502 해결, 2026-05-21) + v7 Phase4 (등급별 평균 LF 차트 복원, 항공편별 LF 기간 필터 연동, 2026-05-21) + v7 Phase5 (/#/ 제거→History API 경로 라우팅, /api 접두어 통합, 2026-05-21)**
 
 ---
 
@@ -43,6 +43,8 @@
 - **좌석 공급석 수정 UI 개선**: 좌석 공급석 수정 영역을 사용자 친화적으로 개선하여 눈에 잘 띄고 편리하게 수정 가능하도록 UI 재설계
 - **L/F progress bar 굵기 개선**: ClassEditCard 내 L/F progress bar를 2배 굵게 수정 (h-1.5 → h-3) 하여 가시성 향상
 - **좌석 공급석 input 동적 너비**: 좌석 수 수정 input 영역에서 숫자가 잘리지 않도록 자릿수에 비례한 동적 width 적용 (최소 4rem, 자릿수×0.9rem + 1.5rem padding 여유). 3자리 초과 시에도 숫자가 온전히 표시됨
+- **가격 수정 DB 즉시 반영 (v7)**: 운임 가격을 직접 편집(input → Enter/blur)하는 순간 `PUT /fares/{flightId}` API를 호출하여 DB에 즉시 저장. 인벤토리 확정 버튼과 무관하게 편집 즉시 반영됨
+- **공급석 수정 DB 즉시 반영 (v7)**: 공급석 수를 수정하면 AI 재배분 후 전 클래스에 대해 `PUT /fares/{flightId}/seats` API를 호출하여 DB에 즉시 저장
 - **노선 선택 제한**: 실제 대한항공 국내선 운항 노선만 선택 가능 (현재 미운항 노선은 선택 불가)
 - 대한항공 국내선 실제 운항 노선 운임 관리 (GMP-CJU, GMP-PUS, GMP-TAE, GMP-KWJ, ICN-CJU, ICN-PUS, GMP-KPO, GMP-RSU 등 8개 노선) — GMP-CJJ(김포-청주)·ICN-CJJ(인천-청주)는 대한항공 미운항으로 제외
 - 가격 산정 단위 구분:
@@ -135,13 +137,16 @@
 - **Pace**: 전주 동일편 대비 예약 증감률 (%, +/- 표시)
 - **Cost**: 항공기임차료 + CREW비용 + 공항사용료 + 기타 고정비 (노선별 차등)
 - 새로고침: 수동 동기화 버튼 제공 (토큰 비용 고려)
-- **노선별 수익 추이 데이터 연동**: 노선 변경 시 수익 추이 그래프 데이터가 해당 노선의 수익 데이터로 변경됨 (노선마다 다른 수익 데이터 세트 유지)
+- **노선별 수익 추이 데이터 연동**: 노선 변경 시 수익 추이 그래프 데이터가 해당 노선의 수익 데이터로 변경됨 (DB 기반 실제 데이터)
 - **일자 필터링 데이터 연동**: 1일/3일/7일/10일 필터 변경 시 '평균 Load Factor', 'AI 승인 대기' 등 모든 KPI 데이터가 해당 기간 기준으로 변동됨
 - **수익 KPI 콤마 표기**: '최근 N일 수익' KPI 카드 금액에 1,000 단위마다 콤마 삽입 (만원 단위 표기 시에도 콤마 적용)
+- **DB 연동 (v7)**: `GET /dashboard/summary?route_id=X&days=N` API 호출로 실제 Flight + FareTier DB 데이터 표시. Mock 하드코딩 제거.
+- **등급별 평균 LF 차트 (v7 Phase4)**: 대시보드 우측 하단 카드에 P/C/Y/M/B/H/K/L/Q 등급별 평균 LF를 수직 바 차트로 표시. DB 연동 시 `class_lf` 필드(기간 내 FareTier 집계), 오프라인 시 노선별 mock 데이터로 폴백.
+- **항공편별 LF 기간 필터 연동 (v7 Phase4)**: 1일/3일/7일/10일 필터 변경 시 항공편별 Load Factor 차트 데이터가 해당 기간 내 전체 항공편 평균값으로 변동됨. 기존 당일 고정 조회에서 기간 집계로 변경.
 
 ### FR-05: 경쟁사 가격 모니터링 (Competitor Price Monitoring)
 
-- AI가 생성한 Mock 경쟁사 가격 데이터 활용
+- **DB 연동 (v7)**: `GET /competitors/{route}/comparison?date=X` API 호출로 실제 competitor_prices 테이블 데이터 표시. Mock 제거.
 - 항공사명: **대한항공** 기준 자사 vs 경쟁사 비교
 - 부킹 클래스 기준: **C/Y/M/V** (프레스티지/일반석 정상/일반석 할인/일반석 특가) 통일
 - 노선 탭: `KE_DOMESTIC_ROUTES` 8개 노선으로 통일 (GMP-CJJ 제외)
@@ -177,7 +182,8 @@
 - **Yield Management Report**: 수익 증대 기여도 자동 분석
 - 판매 목표 대비 달성률 자동 분석
 - 노선 및 기간 선택 필터링 조건에 맞는 데이터만 보고서에 표출 (노선 미선택 시 전 노선 합산, 기간 비례 스케일링 적용)
-- **기간 필터링 기반 일별 수익**: '기간 시작~기간 종료' 필터 설정 후 보고서 생성 시 필터링한 기간 내 날짜별 일별 수익만 표출 ('최근 8일' 하드코딩 제거). 기간에 포함되지 않는 데이터는 표출하지 않음. 기간에 맞춰 일별 수익을 동적 생성하여 정확한 기간 내 데이터만 표시.
+- **기간 필터링 기반 일별 수익**: '기간 시작~기간 종료' 필터 설정 후 보고서 생성 시 필터링한 기간 내 날짜별 일별 수익만 표출 ('최근 8일' 하드코딩 제거). 기간에 포함되지 않는 데이터는 표출하지 않음.
+- **DB 연동 (v7)**: `POST /reports/generate` API 호출로 실제 DB 기반 보고서 생성. 노선별 성과·Yield 추이·AI 통계·일별 수익 모두 DB 집계. Mock 데이터 제거.
 - **보고서 섹션 제목 동적화**: '최근 8일 일별 수익' 하드코딩 제목 대신 '{periodStart} ~ {periodEnd} 일별 수익' 형태로 동적 표출
 - **그래프 형태 최적화**: '노선별 수익 달성률' 그래프는 Cell 기반 조건부 색상(목표 초과=emerald, 미달=amber)으로 가시성 강화. '월별 Yield 추이'는 막대 그래프(BarChart)로 표시하여 가시성 향상 (목표 Yield=gray, 실제 Yield=violet 병렬 막대)
 - 보고서 미리보기 화면 표출 후 PDF 또는 DOCX 다운로드
@@ -241,6 +247,14 @@
 - 운임관리 내부: 별도 햄버거 없이 달력·AI 전략 분석 영역을 항상 인라인(col-span-12 lg:col-span-3) 배치
 - 주간 피커: 날짜 선택 시 슬라이딩 fade 애니메이션 (0.32s)
 - 컨텐츠 그리드: 화면 크기에 따른 컬럼 수 조정 (sm/md/lg breakpoint)
+
+### NFR-08: URL 라우팅
+
+- **History API 기반 경로 라우팅 (v7 Phase5)**: 탭 전환 시 URL이 `/#/fares` 형태(hash) 대신 `/fares`, `/report`, `/dashboard` 등 경로(pathname) 형태로 표시됨
+- `window.history.pushState()` + `popstate` 이벤트 리스너 사용 (react-router 미사용)
+- 브라우저 새로고침 시 현재 탭 유지, 뒤로/앞으로 가기 지원
+- 모든 API 호출은 `/api/*` 접두어를 사용하고 Vite proxy가 백엔드로 rewrite 전달 (경로 충돌 방지)
+- 루트(`/`) 접근 시 대시보드(`/dashboard`)로 폴백
 
 ### NFR-05: 테스팅
 
@@ -347,3 +361,8 @@
 | v3-hyunah | 2026-05-18 | 인벤토리 실시간 통제 확정 버튼 FareTier 오류 버그 수정 요건 추가, AI 전략 분석 AI model 실제 호출 요건 명확화 | `requirements_delta_v3_hyunah.md` |
 | v4 | 2026-05-19 | 운임관리 Step1/2 화면 전환, 기내 좌석 배치도 시각화, EMSRb 알고리즘(buildDashboardFlights·aiReallocateSeats), 코드배지 미표출, 세로형 SeatMap, 좌석 크기·간격 개선, 다이나믹 프라이싱 모듈 | `requirements_delta_v4.md` |
 | v6 | 2026-05-21 | 실제 운항 노선만 선택 가능, 금액 콤마 표기(NFR-07 신규), 모바일 반응형 강화, 대시보드 노선별·일자별 데이터 연동, 운임관리 UI 개선(새로고침 시간·헤더 정리·날짜 형식·좌석 UI·LF 바), 시뮬레이터 국내선 전체 옵션, 보고서 기간 필터 일별 수익·그래프 형태 개선 | `requirements_delta_v6.md` |
+| v7 Phase1 | 2026-05-21 | Dashboard/CompetitorMonitor/Report/FareManagement 전 화면 DB 연동, Mock fallback 패턴 적용 | `requirements_delta_v7.md` |
+| v7 Phase2 | 2026-05-21 | 가격·공급석 수정 즉시 DB 반영(PUT API), 경쟁사 C클래스 더미 데이터 추가 | `requirements_delta_v7.md` |
+| v7 Phase3 | 2026-05-21 | Vite proxy target 8080→8000 오류 수정, API 502 Bad Gateway 해결 | `requirements_delta_v7.md` |
+| v7 Phase4 | 2026-05-21 | 대시보드 등급별 평균 LF 차트 복원(ClassLfSchema 신규), 항공편별 LF 기간 필터 연동(기간 내 집계로 변경) | `requirements_delta_v7.md` |
+| v7 Phase5 | 2026-05-21 | /#/ 제거 → History API 경로 라우팅(/fares, /report 등), /api 접두어 통합, Vite proxy rewrite 적용(NFR-08 신규) | `requirements_delta_v7.md` |

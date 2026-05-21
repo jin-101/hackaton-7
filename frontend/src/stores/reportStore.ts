@@ -1,77 +1,66 @@
 import { create } from 'zustand';
 import type { ReportDTO, ReportStatus } from '../types';
+import apiClient from '../api/apiClient';
 
-// 전 노선 성과 데이터 (필터링 기준)
-const ALL_ROUTE_PERF = [
-  { route: 'GMP-CJU', revenue: 182_400_000, target: 160_000_000, loadFactor: 87 },
-  { route: 'GMP-PUS', revenue: 94_500_000,  target: 110_000_000, loadFactor: 58 },
-  { route: 'ICN-CJU', revenue: 138_200_000, target: 130_000_000, loadFactor: 86 },
-  { route: 'GMP-TAE', revenue: 41_800_000,  target: 50_000_000,  loadFactor: 48 },
-  { route: 'GMP-KWJ', revenue: 35_600_000,  target: 40_000_000,  loadFactor: 52 },
-  { route: 'ICN-PUS', revenue: 88_900_000,  target: 100_000_000, loadFactor: 61 },
-  { route: 'GMP-KPO', revenue: 32_100_000,  target: 38_000_000,  loadFactor: 55 },
-  { route: 'GMP-RSU', revenue: 28_400_000,  target: 35_000_000,  loadFactor: 49 },
-];
+const KE_ROUTES = ['GMP-CJU', 'GMP-PUS', 'ICN-CJU', 'GMP-TAE', 'GMP-KWJ', 'ICN-PUS', 'GMP-KPO', 'GMP-RSU'];
 
-// 월별 Yield 데이터 (월 번호 → 데이터)
-const YIELD_BY_MONTH: Record<number, { yield: number; target: number }> = {
-  1: { yield: 78, target: 75 },
-  2: { yield: 82, target: 78 },
-  3: { yield: 89, target: 82 },
-  4: { yield: 85, target: 84 },
-  5: { yield: 91, target: 86 },
-  6: { yield: 88, target: 85 },
-  7: { yield: 95, target: 90 },
-  8: { yield: 93, target: 91 },
-  9: { yield: 86, target: 83 },
-  10: { yield: 84, target: 82 },
-  11: { yield: 80, target: 79 },
-  12: { yield: 90, target: 88 },
+const ROUTE_REVENUE: Record<string, number> = {
+  'GMP-CJU': 82_400_000, 'GMP-PUS': 42_300_000, 'ICN-CJU': 68_900_000,
+  'GMP-TAE': 16_900_000, 'GMP-KWJ': 13_700_000, 'ICN-PUS': 39_200_000,
+  'GMP-KPO': 13_200_000, 'GMP-RSU': 11_400_000,
+};
+const ROUTE_LF: Record<string, number> = {
+  'GMP-CJU': 79.2, 'GMP-PUS': 61.8, 'ICN-CJU': 86.1,
+  'GMP-TAE': 48.4, 'GMP-KWJ': 52.3, 'ICN-PUS': 61.2,
+  'GMP-KPO': 55.1, 'GMP-RSU': 49.3,
 };
 
-// 기간 내 일별 수익 mock 생성 (필터 기간에 정확히 맞는 데이터)
-function generateDailyRevenue(
-  start: string,
-  end: string,
-  baseDaily: number,
-): { date: string; revenue: number; bookings: number }[] {
-  const result: { date: string; revenue: number; bookings: number }[] = [];
-  const s = new Date(start);
-  const e = new Date(end);
-  const cur = new Date(s);
-  let seed = s.getTime();
-  const rng = () => { seed = (seed * 1664525 + 1013904223) & 0xffffffff; return (seed >>> 0) / 0x100000000; };
-  while (cur <= e) {
-    const noise = 0.75 + rng() * 0.5;
-    const revenue = Math.round(baseDaily * noise);
-    const bookings = Math.round(revenue / 105_000 * (0.9 + rng() * 0.2));
-    result.push({
-      date: `${cur.getMonth() + 1}/${cur.getDate()}`,
-      revenue,
-      bookings: Math.max(1, bookings),
-    });
-    cur.setDate(cur.getDate() + 1);
-  }
-  return result;
-}
+function buildMockReport(route: string | null, start: string, end: string): ReportDTO {
+  const routes = route ? [route] : KE_ROUTES;
+  const totalRevenue = routes.reduce((s, r) => s + (ROUTE_REVENUE[r] ?? 0), 0);
+  const totalTarget = Math.round(totalRevenue * 0.92);
+  const achieveRate = Math.round((totalRevenue / totalTarget) * 100);
 
-// 기간에 포함되는 월 목록 반환
-function getMonthsInRange(start: string, end: string): number[] {
-  const s = new Date(start);
-  const e = new Date(end);
-  const months: number[] = [];
-  const cur = new Date(s.getFullYear(), s.getMonth(), 1);
-  while (cur <= e) {
-    months.push(cur.getMonth() + 1);
-    cur.setMonth(cur.getMonth() + 1);
-  }
-  return months;
-}
+  const routePerformance = routes.map((r) => ({
+    route: r,
+    revenue: ROUTE_REVENUE[r] ?? 0,
+    target: Math.round((ROUTE_REVENUE[r] ?? 0) * 0.92),
+    loadFactor: ROUTE_LF[r] ?? 60,
+  }));
 
-// 기간에 따라 노선 수익을 일할 비례 스케일링 (전체 기간 = 90일 기준)
-function scaleRevenue(revenue: number, start: string, end: string): number {
-  const days = Math.max(1, (new Date(end).getTime() - new Date(start).getTime()) / 86_400_000);
-  return Math.round(revenue * (days / 90));
+  const yieldTrend = [
+    { month: '3월', yield: 81, target: 78 },
+    { month: '4월', yield: 84, target: 80 },
+    { month: '5월', yield: 87, target: 82 },
+  ];
+
+  // Generate revenue history within the given period
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const revenueHistory: { date: string; revenue: number; bookings: number }[] = [];
+  const dayRev = Math.round(totalRevenue / Math.max(1, (endDate.getTime() - startDate.getTime()) / 86400000 + 1));
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    const variance = 0.85 + Math.random() * 0.3;
+    const rev = Math.round(dayRev * variance);
+    revenueHistory.push({ date: `${m}/${day}`, revenue: rev, bookings: Math.round(rev / 104000) });
+  }
+
+  return {
+    reportId: `MOCK-${Date.now()}`,
+    route,
+    periodStart: start,
+    periodEnd: end,
+    totalRevenue,
+    totalTarget,
+    achieveRate,
+    routePerformance,
+    yieldTrend,
+    aiStats: { approvedCount: 12, rejectedCount: 3 },
+    revenueHistory,
+    createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
+  };
 }
 
 interface ReportStore {
@@ -95,52 +84,58 @@ export const useReportStore = create<ReportStore>((set, get) => ({
 
   generateReport: async (route, start, end) => {
     set({ reportStatus: 'generating' });
-    await new Promise((r) => setTimeout(r, 1200));
-
-    // 노선 필터링
-    const filteredRoutes = route
-      ? ALL_ROUTE_PERF.filter((r) => r.route === route)
-      : ALL_ROUTE_PERF;
-
-    // 기간 비례 스케일링 적용
-    const routePerformance = filteredRoutes.map((r) => ({
-      ...r,
-      revenue: scaleRevenue(r.revenue, start, end),
-      target:  scaleRevenue(r.target,  start, end),
-    }));
-
-    const totalRevenue = routePerformance.reduce((s, r) => s + r.revenue, 0);
-    const totalTarget  = routePerformance.reduce((s, r) => s + r.target,  0);
-
-    // 기간 내 포함되는 월만 Yield 표시
-    const months = getMonthsInRange(start, end);
-    const MONTH_LABELS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-    const yieldTrend = months.map((m) => ({
-      month: MONTH_LABELS[m - 1],
-      ...(YIELD_BY_MONTH[m] ?? { yield: 80, target: 80 }),
-    }));
-
-    // 기간 내 일별 수익 — 필터 기간에 정확히 맞는 데이터 동적 생성
-    const baseDaily = Math.round(totalRevenue / Math.max(1, (new Date(end).getTime() - new Date(start).getTime()) / 86_400_000));
-    const historyToShow = generateDailyRevenue(start, end, baseDaily);
-
-    set({
-      reportData: {
-        reportId: `RPT-${Date.now()}`,
-        route,
-        periodStart: start,
-        periodEnd: end,
-        totalRevenue,
-        totalTarget,
-        achieveRate: Math.round((totalRevenue / totalTarget) * 100),
-        routePerformance,
-        yieldTrend,
-        aiStats: { approvedCount: 3, rejectedCount: 1 },
-        revenueHistory: historyToShow,
-        createdAt: new Date().toISOString(),
-      },
-      reportStatus: 'ready',
-    });
+    try {
+      const raw = await apiClient.post<{
+        report_id: string;
+        route: string | null;
+        period_start: string;
+        period_end: string;
+        total_revenue: number;
+        total_target: number;
+        achieve_rate: number;
+        route_performance: { route: string; revenue: number; target: number; load_factor: number }[];
+        yield_trend: { month: string; yield_: number; target: number }[];
+        ai_stats: { approved_count: number; rejected_count: number };
+        revenue_history: { date: string; revenue: number; bookings: number }[];
+        created_at: string;
+      }>('/reports/generate', {
+        route: route ?? null,
+        period_start: start,
+        period_end: end,
+      });
+      set({
+        reportData: {
+          reportId: raw.report_id,
+          route: raw.route,
+          periodStart: raw.period_start,
+          periodEnd: raw.period_end,
+          totalRevenue: raw.total_revenue,
+          totalTarget: raw.total_target,
+          achieveRate: raw.achieve_rate,
+          routePerformance: raw.route_performance.map((r) => ({
+            route: r.route,
+            revenue: r.revenue,
+            target: r.target,
+            loadFactor: r.load_factor,
+          })),
+          yieldTrend: raw.yield_trend.map((y) => ({
+            month: y.month,
+            yield: y.yield_,
+            target: y.target,
+          })),
+          aiStats: {
+            approvedCount: raw.ai_stats.approved_count,
+            rejectedCount: raw.ai_stats.rejected_count,
+          },
+          revenueHistory: raw.revenue_history,
+          createdAt: raw.created_at,
+        },
+        reportStatus: 'ready',
+      });
+    } catch {
+      const mock = buildMockReport(route, start, end);
+      set({ reportData: mock, reportStatus: 'ready' });
+    }
   },
 
   downloadPdf: async (_reportId) => {

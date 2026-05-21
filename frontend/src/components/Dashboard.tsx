@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
 import { TrendingUp, Users, Plane, AlertCircle } from "lucide-react";
 import { KE_DOMESTIC_ROUTES } from "../data/mockData";
-import { useAiRecommendationStore } from "../stores/aiRecommendationStore";
+import apiClient from "../api/apiClient";
 
 const BRAND = "#002561";
 
@@ -27,10 +27,19 @@ const PERIOD_OPTIONS = [
   { label: "10일", value: 10 },
 ];
 
-// 노선별 수익 히스토리 데이터 (노선 변경 시 수익 추이 반영)
-const ROUTE_REVENUE_HISTORY: Record<string, { date: string; revenue: number; bookings: number }[]> = {
-  "전체": [
-    { date: "5/14", revenue: 282_000_000, bookings: 2720 },
+interface DashboardSummary {
+  total_revenue: number;
+  total_bookings: number;
+  avg_load_factor: number;
+  pending_recommendations: number;
+  revenue_history: { date: string; revenue: number; bookings: number }[];
+  route_lf: { label: string; lf: number }[];
+  class_lf: { label: string; lf: number }[];
+}
+
+// ── Mock fallback ─────────────────────────────────────────────────────────────
+const MOCK_REVENUE_HISTORY: Record<string, { date: string; revenue: number; bookings: number }[]> = {
+  all: [
     { date: "5/15", revenue: 268_400_000, bookings: 2581 },
     { date: "5/16", revenue: 301_200_000, bookings: 2902 },
     { date: "5/17", revenue: 315_900_000, bookings: 3048 },
@@ -40,9 +49,9 @@ const ROUTE_REVENUE_HISTORY: Record<string, { date: string; revenue: number; boo
     { date: "5/21", revenue: 344_300_000, bookings: 3325 },
     { date: "5/22", revenue: 362_100_000, bookings: 3491 },
     { date: "5/23", revenue: 328_600_000, bookings: 3167 },
+    { date: "5/24", revenue: 345_900_000, bookings: 3330 },
   ],
   "GMP-CJU": [
-    { date: "5/14", revenue: 58_700_000, bookings: 563 },
     { date: "5/15", revenue: 44_300_000, bookings: 425 },
     { date: "5/16", revenue: 67_200_000, bookings: 648 },
     { date: "5/17", revenue: 72_400_000, bookings: 697 },
@@ -52,9 +61,9 @@ const ROUTE_REVENUE_HISTORY: Record<string, { date: string; revenue: number; boo
     { date: "5/21", revenue: 82_400_000, bookings: 795 },
     { date: "5/22", revenue: 91_100_000, bookings: 879 },
     { date: "5/23", revenue: 79_300_000, bookings: 765 },
+    { date: "5/24", revenue: 85_000_000, bookings: 820 },
   ],
   "GMP-PUS": [
-    { date: "5/14", revenue: 31_200_000, bookings: 298 },
     { date: "5/15", revenue: 27_800_000, bookings: 267 },
     { date: "5/16", revenue: 34_400_000, bookings: 330 },
     { date: "5/17", revenue: 38_100_000, bookings: 366 },
@@ -64,9 +73,9 @@ const ROUTE_REVENUE_HISTORY: Record<string, { date: string; revenue: number; boo
     { date: "5/21", revenue: 42_300_000, bookings: 407 },
     { date: "5/22", revenue: 46_800_000, bookings: 450 },
     { date: "5/23", revenue: 40_100_000, bookings: 386 },
+    { date: "5/24", revenue: 43_000_000, bookings: 414 },
   ],
   "ICN-CJU": [
-    { date: "5/14", revenue: 52_100_000, bookings: 501 },
     { date: "5/15", revenue: 48_600_000, bookings: 468 },
     { date: "5/16", revenue: 56_800_000, bookings: 547 },
     { date: "5/17", revenue: 61_200_000, bookings: 589 },
@@ -76,9 +85,9 @@ const ROUTE_REVENUE_HISTORY: Record<string, { date: string; revenue: number; boo
     { date: "5/21", revenue: 68_900_000, bookings: 663 },
     { date: "5/22", revenue: 74_400_000, bookings: 717 },
     { date: "5/23", revenue: 65_700_000, bookings: 633 },
+    { date: "5/24", revenue: 70_000_000, bookings: 674 },
   ],
   "GMP-TAE": [
-    { date: "5/14", revenue: 12_400_000, bookings: 119 },
     { date: "5/15", revenue: 10_800_000, bookings: 103 },
     { date: "5/16", revenue: 13_700_000, bookings: 132 },
     { date: "5/17", revenue: 15_200_000, bookings: 146 },
@@ -88,9 +97,9 @@ const ROUTE_REVENUE_HISTORY: Record<string, { date: string; revenue: number; boo
     { date: "5/21", revenue: 16_900_000, bookings: 163 },
     { date: "5/22", revenue: 18_700_000, bookings: 180 },
     { date: "5/23", revenue: 15_900_000, bookings: 153 },
+    { date: "5/24", revenue: 17_200_000, bookings: 166 },
   ],
   "GMP-KWJ": [
-    { date: "5/14", revenue: 10_200_000, bookings: 98 },
     { date: "5/15", revenue:  9_100_000, bookings: 87 },
     { date: "5/16", revenue: 11_400_000, bookings: 110 },
     { date: "5/17", revenue: 12_800_000, bookings: 123 },
@@ -100,9 +109,9 @@ const ROUTE_REVENUE_HISTORY: Record<string, { date: string; revenue: number; boo
     { date: "5/21", revenue: 13_700_000, bookings: 132 },
     { date: "5/22", revenue: 15_200_000, bookings: 146 },
     { date: "5/23", revenue: 13_100_000, bookings: 126 },
+    { date: "5/24", revenue: 14_000_000, bookings: 135 },
   ],
   "ICN-PUS": [
-    { date: "5/14", revenue: 28_900_000, bookings: 278 },
     { date: "5/15", revenue: 26_100_000, bookings: 251 },
     { date: "5/16", revenue: 31_800_000, bookings: 306 },
     { date: "5/17", revenue: 34_600_000, bookings: 333 },
@@ -112,9 +121,9 @@ const ROUTE_REVENUE_HISTORY: Record<string, { date: string; revenue: number; boo
     { date: "5/21", revenue: 39_200_000, bookings: 378 },
     { date: "5/22", revenue: 43_500_000, bookings: 419 },
     { date: "5/23", revenue: 37_400_000, bookings: 360 },
+    { date: "5/24", revenue: 40_000_000, bookings: 385 },
   ],
   "GMP-KPO": [
-    { date: "5/14", revenue:  9_800_000, bookings: 94 },
     { date: "5/15", revenue:  8_600_000, bookings: 82 },
     { date: "5/16", revenue: 10_900_000, bookings: 105 },
     { date: "5/17", revenue: 12_300_000, bookings: 118 },
@@ -124,9 +133,9 @@ const ROUTE_REVENUE_HISTORY: Record<string, { date: string; revenue: number; boo
     { date: "5/21", revenue: 13_200_000, bookings: 127 },
     { date: "5/22", revenue: 14_600_000, bookings: 141 },
     { date: "5/23", revenue: 12_500_000, bookings: 120 },
+    { date: "5/24", revenue: 13_400_000, bookings: 129 },
   ],
   "GMP-RSU": [
-    { date: "5/14", revenue:  8_400_000, bookings: 80 },
     { date: "5/15", revenue:  7_200_000, bookings: 69 },
     { date: "5/16", revenue:  9_300_000, bookings: 89 },
     { date: "5/17", revenue: 10_600_000, bookings: 102 },
@@ -136,172 +145,108 @@ const ROUTE_REVENUE_HISTORY: Record<string, { date: string; revenue: number; boo
     { date: "5/21", revenue: 11_400_000, bookings: 110 },
     { date: "5/22", revenue: 12_800_000, bookings: 123 },
     { date: "5/23", revenue: 10_900_000, bookings: 105 },
+    { date: "5/24", revenue: 11_700_000, bookings: 113 },
   ],
 };
 
-// 노선·기간별 KPI Mock 데이터
-const ROUTE_PERIOD_KPI: Record<string, Record<number, { avgLf: number; pendingAi: number }>> = {
-  "전체": { 1: { avgLf: 74.5, pendingAi: 3 }, 3: { avgLf: 72.1, pendingAi: 7 }, 7: { avgLf: 73.8, pendingAi: 14 }, 10: { avgLf: 71.6, pendingAi: 19 } },
-  "GMP-CJU": { 1: { avgLf: 79.2, pendingAi: 1 }, 3: { avgLf: 77.4, pendingAi: 3 }, 7: { avgLf: 78.9, pendingAi: 5 }, 10: { avgLf: 76.3, pendingAi: 7 } },
-  "GMP-PUS": { 1: { avgLf: 61.8, pendingAi: 1 }, 3: { avgLf: 59.2, pendingAi: 2 }, 7: { avgLf: 60.5, pendingAi: 4 }, 10: { avgLf: 58.7, pendingAi: 5 } },
-  "ICN-CJU": { 1: { avgLf: 86.1, pendingAi: 1 }, 3: { avgLf: 84.3, pendingAi: 2 }, 7: { avgLf: 85.7, pendingAi: 4 }, 10: { avgLf: 83.2, pendingAi: 6 } },
-  "GMP-TAE": { 1: { avgLf: 48.4, pendingAi: 0 }, 3: { avgLf: 46.8, pendingAi: 1 }, 7: { avgLf: 47.9, pendingAi: 2 }, 10: { avgLf: 45.6, pendingAi: 3 } },
-  "GMP-KWJ": { 1: { avgLf: 52.3, pendingAi: 0 }, 3: { avgLf: 50.7, pendingAi: 1 }, 7: { avgLf: 51.8, pendingAi: 2 }, 10: { avgLf: 49.4, pendingAi: 3 } },
-  "ICN-PUS": { 1: { avgLf: 61.2, pendingAi: 1 }, 3: { avgLf: 59.6, pendingAi: 2 }, 7: { avgLf: 60.8, pendingAi: 3 }, 10: { avgLf: 58.3, pendingAi: 4 } },
-  "GMP-KPO": { 1: { avgLf: 55.1, pendingAi: 0 }, 3: { avgLf: 53.4, pendingAi: 1 }, 7: { avgLf: 54.6, pendingAi: 2 }, 10: { avgLf: 52.2, pendingAi: 2 } },
-  "GMP-RSU": { 1: { avgLf: 49.3, pendingAi: 0 }, 3: { avgLf: 47.9, pendingAi: 1 }, 7: { avgLf: 49.1, pendingAi: 1 }, 10: { avgLf: 46.8, pendingAi: 2 } },
+const MOCK_CLASS_LF: Record<string, { label: string; lf: number }[]> = {
+  all:       [{ label: "C (프레스티지)", lf: 71.3 }, { label: "Y (일반 정상)", lf: 68.2 }, { label: "M (일반 할인)", lf: 79.5 }, { label: "V (특가)", lf: 55.8 }],
+  "GMP-CJU": [{ label: "C (프레스티지)", lf: 78.2 }, { label: "Y (일반 정상)", lf: 76.5 }, { label: "M (일반 할인)", lf: 84.3 }, { label: "V (특가)", lf: 63.1 }],
+  "GMP-PUS": [{ label: "C (프레스티지)", lf: 62.4 }, { label: "Y (일반 정상)", lf: 59.8 }, { label: "M (일반 할인)", lf: 68.2 }, { label: "V (특가)", lf: 47.3 }],
+  "ICN-CJU": [{ label: "C (프레스티지)", lf: 88.7 }, { label: "Y (일반 정상)", lf: 85.4 }, { label: "M (일반 할인)", lf: 91.2 }, { label: "V (특가)", lf: 72.6 }],
+  "GMP-TAE": [{ label: "C (프레스티지)", lf: 53.1 }, { label: "Y (일반 정상)", lf: 50.4 }, { label: "M (일반 할인)", lf: 58.7 }, { label: "V (특가)", lf: 38.9 }],
+  "GMP-KWJ": [{ label: "C (프레스티지)", lf: 57.8 }, { label: "Y (일반 정상)", lf: 54.6 }, { label: "M (일반 할인)", lf: 63.4 }, { label: "V (특가)", lf: 42.1 }],
+  "ICN-PUS": [{ label: "C (프레스티지)", lf: 66.3 }, { label: "Y (일반 정상)", lf: 63.8 }, { label: "M (일반 할인)", lf: 72.5 }, { label: "V (특가)", lf: 51.4 }],
+  "GMP-KPO": [{ label: "C (프레스티지)", lf: 55.6 }, { label: "Y (일반 정상)", lf: 52.9 }, { label: "M (일반 할인)", lf: 61.3 }, { label: "V (특가)", lf: 41.7 }],
+  "GMP-RSU": [{ label: "C (프레스티지)", lf: 49.2 }, { label: "Y (일반 정상)", lf: 46.8 }, { label: "M (일반 할인)", lf: 55.1 }, { label: "V (특가)", lf: 35.4 }],
 };
 
-// 노선별 LF Mock 데이터 (노선 필터 반영용)
-const ROUTE_LF_MAP: Record<string, { flight: { label: string; lf: number }[]; cls: { cls: string; lf: number }[] }> = {
-  "전체": {
-    flight: [
-      { label: "KE1201 (GMP-CJU)", lf: 79 },
-      { label: "KE1203 (GMP-CJU)", lf: 54 },
-      { label: "KE1205 (GMP-CJU)", lf: 89 },
-      { label: "KE1401 (GMP-PUS)", lf: 58 },
-      { label: "KE1501 (ICN-CJU)", lf: 87 },
-      { label: "KE1207 (GMP-CJU)", lf: 36 },
-      { label: "KE1403 (GMP-PUS)", lf: 73 },
-    ],
-    cls: [
-      { cls: "C (프레스티지)", lf: 72 },
-      { cls: "Y (일반 정상)", lf: 68 },
-      { cls: "M (일반 할인)", lf: 81 },
-      { cls: "V (특가)", lf: 55 },
-    ],
-  },
-  "GMP-CJU": {
-    flight: [
-      { label: "KE1201", lf: 79 },
-      { label: "KE1203", lf: 54 },
-      { label: "KE1205", lf: 89 },
-      { label: "KE1207", lf: 36 },
-    ],
-    cls: [
-      { cls: "C (프레스티지)", lf: 75 },
-      { cls: "Y (일반 정상)", lf: 71 },
-      { cls: "M (일반 할인)", lf: 85 },
-      { cls: "V (특가)", lf: 58 },
-    ],
-  },
-  "GMP-PUS": {
-    flight: [
-      { label: "KE1401", lf: 58 },
-      { label: "KE1403", lf: 73 },
-    ],
-    cls: [
-      { cls: "C (프레스티지)", lf: 65 },
-      { cls: "Y (일반 정상)", lf: 61 },
-      { cls: "M (일반 할인)", lf: 74 },
-      { cls: "V (특가)", lf: 49 },
-    ],
-  },
-  "ICN-CJU": {
-    flight: [
-      { label: "KE1501", lf: 87 },
-      { label: "KE1503", lf: 71 },
-      { label: "KE1505", lf: 62 },
-    ],
-    cls: [
-      { cls: "C (프레스티지)", lf: 82 },
-      { cls: "Y (일반 정상)", lf: 78 },
-      { cls: "M (일반 할인)", lf: 89 },
-      { cls: "V (특가)", lf: 71 },
-    ],
-  },
-  "GMP-TAE": {
-    flight: [
-      { label: "KE1601", lf: 48 },
-      { label: "KE1603", lf: 53 },
-    ],
-    cls: [
-      { cls: "C (프레스티지)", lf: 42 },
-      { cls: "Y (일반 정상)", lf: 39 },
-      { cls: "M (일반 할인)", lf: 51 },
-      { cls: "V (특가)", lf: 35 },
-    ],
-  },
-  "GMP-KWJ": {
-    flight: [
-      { label: "KE1701", lf: 52 },
-      { label: "KE1703", lf: 57 },
-    ],
-    cls: [
-      { cls: "C (프레스티지)", lf: 48 },
-      { cls: "Y (일반 정상)", lf: 44 },
-      { cls: "M (일반 할인)", lf: 55 },
-      { cls: "V (특가)", lf: 39 },
-    ],
-  },
-  "ICN-PUS": {
-    flight: [
-      { label: "KE1801", lf: 61 },
-      { label: "KE1803", lf: 66 },
-    ],
-    cls: [
-      { cls: "C (프레스티지)", lf: 57 },
-      { cls: "Y (일반 정상)", lf: 53 },
-      { cls: "M (일반 할인)", lf: 64 },
-      { cls: "V (특가)", lf: 48 },
-    ],
-  },
-  "GMP-KPO": {
-    flight: [
-      { label: "KE1901", lf: 55 },
-      { label: "KE1903", lf: 59 },
-    ],
-    cls: [
-      { cls: "C (프레스티지)", lf: 51 },
-      { cls: "Y (일반 정상)", lf: 47 },
-      { cls: "M (일반 할인)", lf: 58 },
-      { cls: "V (특가)", lf: 41 },
-    ],
-  },
-  "GMP-RSU": {
-    flight: [
-      { label: "KE2001", lf: 49 },
-      { label: "KE2003", lf: 53 },
-    ],
-    cls: [
-      { cls: "C (프레스티지)", lf: 45 },
-      { cls: "Y (일반 정상)", lf: 41 },
-      { cls: "M (일반 할인)", lf: 52 },
-      { cls: "V (특가)", lf: 36 },
-    ],
-  },
+const MOCK_ROUTE_LF: Record<string, { label: string; lf: number }[]> = {
+  all: [
+    { label: "KE1201 (GMP-CJU)", lf: 79 },
+    { label: "KE1203 (GMP-CJU)", lf: 54 },
+    { label: "KE1205 (GMP-CJU)", lf: 89 },
+    { label: "KE1401 (GMP-PUS)", lf: 58 },
+    { label: "KE1801 (ICN-CJU)", lf: 87 },
+    { label: "KE1207 (GMP-CJU)", lf: 36 },
+    { label: "KE1403 (GMP-PUS)", lf: 73 },
+  ],
+  "GMP-CJU": [
+    { label: "KE1201", lf: 79 }, { label: "KE1203", lf: 54 },
+    { label: "KE1205", lf: 89 }, { label: "KE1207", lf: 36 },
+  ],
+  "GMP-PUS": [{ label: "KE1401", lf: 58 }, { label: "KE1403", lf: 73 }],
+  "ICN-CJU": [{ label: "KE1801", lf: 87 }, { label: "KE1803", lf: 71 }, { label: "KE1805", lf: 62 }],
+  "GMP-TAE": [{ label: "KE1601", lf: 48 }, { label: "KE1603", lf: 53 }],
+  "GMP-KWJ": [{ label: "KE1701", lf: 52 }, { label: "KE1703", lf: 57 }],
+  "ICN-PUS": [{ label: "KE1901", lf: 61 }, { label: "KE1903", lf: 66 }],
+  "GMP-KPO": [{ label: "KE2001", lf: 55 }, { label: "KE2003", lf: 59 }],
+  "GMP-RSU": [{ label: "KE2101", lf: 49 }, { label: "KE2103", lf: 53 }],
 };
 
-function getRouteData(route: string) {
-  return ROUTE_LF_MAP[route] ?? ROUTE_LF_MAP["전체"];
-}
+const MOCK_KPI: Record<string, Record<number, { revenue: number; bookings: number; avgLf: number; pending: number }>> = {
+  all:       { 1: { revenue: 344_300_000, bookings: 3325, avgLf: 74.5, pending: 3 }, 3: { revenue: 1_014_200_000, bookings: 9775, avgLf: 72.1, pending: 7 }, 7: { revenue: 2_315_600_000, bookings: 22_293, avgLf: 73.8, pending: 14 }, 10: { revenue: 3_196_000_000, bookings: 30_795, avgLf: 71.6, pending: 19 } },
+  "GMP-CJU": { 1: { revenue: 82_400_000, bookings: 795, avgLf: 79.2, pending: 1 },  3: { revenue: 248_100_000, bookings: 2401, avgLf: 77.4, pending: 3 }, 7: { revenue: 568_900_000, bookings: 5509, avgLf: 78.9, pending: 5 }, 10: { revenue: 798_400_000, bookings: 7730, avgLf: 76.3, pending: 7 } },
+  "GMP-PUS": { 1: { revenue: 42_300_000, bookings: 407, avgLf: 61.8, pending: 1 },  3: { revenue: 128_200_000, bookings: 1233, avgLf: 59.2, pending: 2 }, 7: { revenue: 294_400_000, bookings: 2835, avgLf: 60.5, pending: 4 }, 10: { revenue: 411_000_000, bookings: 3960, avgLf: 58.7, pending: 5 } },
+  "ICN-CJU": { 1: { revenue: 68_900_000, bookings: 663, avgLf: 86.1, pending: 1 },  3: { revenue: 204_000_000, bookings: 1965, avgLf: 84.3, pending: 2 }, 7: { revenue: 472_500_000, bookings: 4543, avgLf: 85.7, pending: 4 }, 10: { revenue: 664_800_000, bookings: 6398, avgLf: 83.2, pending: 6 } },
+  "GMP-TAE": { 1: { revenue: 16_900_000, bookings: 163, avgLf: 48.4, pending: 0 },  3: { revenue: 51_000_000, bookings: 491, avgLf: 46.8, pending: 1 },  7: { revenue: 117_500_000, bookings: 1130, avgLf: 47.9, pending: 2 }, 10: { revenue: 163_000_000, bookings: 1570, avgLf: 45.6, pending: 3 } },
+  "GMP-KWJ": { 1: { revenue: 13_700_000, bookings: 132, avgLf: 52.3, pending: 0 },  3: { revenue: 41_500_000, bookings: 399, avgLf: 50.7, pending: 1 },  7: { revenue: 95_500_000, bookings: 919, avgLf: 51.8, pending: 2 },  10: { revenue: 132_400_000, bookings: 1276, avgLf: 49.4, pending: 3 } },
+  "ICN-PUS": { 1: { revenue: 39_200_000, bookings: 378, avgLf: 61.2, pending: 1 },  3: { revenue: 115_600_000, bookings: 1113, avgLf: 59.6, pending: 2 }, 7: { revenue: 268_100_000, bookings: 2580, avgLf: 60.8, pending: 3 }, 10: { revenue: 375_600_000, bookings: 3617, avgLf: 58.3, pending: 4 } },
+  "GMP-KPO": { 1: { revenue: 13_200_000, bookings: 127, avgLf: 55.1, pending: 0 },  3: { revenue: 40_300_000, bookings: 388, avgLf: 53.4, pending: 1 },  7: { revenue: 92_800_000, bookings: 894, avgLf: 54.6, pending: 2 },  10: { revenue: 129_500_000, bookings: 1248, avgLf: 52.2, pending: 2 } },
+  "GMP-RSU": { 1: { revenue: 11_400_000, bookings: 110, avgLf: 49.3, pending: 0 },  3: { revenue: 34_600_000, bookings: 333, avgLf: 47.9, pending: 1 },  7: { revenue: 80_000_000, bookings: 771, avgLf: 49.1, pending: 1 },  10: { revenue: 111_700_000, bookings: 1076, avgLf: 46.8, pending: 2 } },
+};
 
-function getRevenueHistory(route: string, days: number) {
-  const history = ROUTE_REVENUE_HISTORY[route] ?? ROUTE_REVENUE_HISTORY["전체"];
-  return history.slice(-days);
+function getMockSummary(routeParam: string, days: number): DashboardSummary {
+  const kpi = MOCK_KPI[routeParam]?.[days] ?? MOCK_KPI.all[1];
+  const history = (MOCK_REVENUE_HISTORY[routeParam] ?? MOCK_REVENUE_HISTORY.all).slice(-days);
+  const lf = MOCK_ROUTE_LF[routeParam] ?? MOCK_ROUTE_LF.all;
+  const classLf = MOCK_CLASS_LF[routeParam] ?? MOCK_CLASS_LF.all;
+  return {
+    total_revenue: kpi.revenue,
+    total_bookings: kpi.bookings,
+    avg_load_factor: kpi.avgLf,
+    pending_recommendations: kpi.pending,
+    revenue_history: history,
+    route_lf: lf,
+    class_lf: classLf,
+  };
 }
-
-function getRoutePeriodKpi(route: string, days: number) {
-  const kpiMap = ROUTE_PERIOD_KPI[route] ?? ROUTE_PERIOD_KPI["전체"];
-  return kpiMap[days] ?? kpiMap[1];
-}
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
-  const { recommendations } = useAiRecommendationStore();
   const [periodDays, setPeriodDays] = useState(1);
   const [dashboardRoute, setDashboardRoute] = useState("전체");
+  const [summary, setSummary] = useState<DashboardSummary>(() =>
+    getMockSummary("all", 1)
+  );
 
-  const filteredHistory = getRevenueHistory(dashboardRoute, periodDays);
+  const routeParam = dashboardRoute === "전체" ? "all" : dashboardRoute;
 
-  const totalRevenue = filteredHistory.reduce((s, d) => s + d.revenue, 0);
-  const totalBookings = filteredHistory.reduce((s, d) => s + d.bookings, 0);
-  const kpi = getRoutePeriodKpi(dashboardRoute, periodDays);
-  const pendingRecs = recommendations.filter((r) => r.status === "pending").length + kpi.pendingAi;
-  const avgLoadFactor = kpi.avgLf / 100;
+  const fetchSummary = useCallback(async () => {
+    try {
+      const data = await apiClient.get<DashboardSummary>(
+        `/dashboard/summary?route_id=${routeParam}&days=${periodDays}`
+      );
+      if (data && data.revenue_history !== undefined) {
+        setSummary(data);
+        return;
+      }
+    } catch { /* fall through to mock */ }
+    setSummary(getMockSummary(routeParam, periodDays));
+  }, [routeParam, periodDays]);
 
-  const routeData = getRouteData(dashboardRoute);
-  const { flight: loadFactorData, cls: classData } = routeData;
+  useEffect(() => {
+    void fetchSummary();
+  }, [fetchSummary]);
 
+  const totalRevenue = summary.total_revenue;
+  const totalBookings = summary.total_bookings;
+  const avgLoadFactor = summary.avg_load_factor;
+  const pendingRecs = summary.pending_recommendations;
+  const filteredHistory = summary.revenue_history;
+  const loadFactorData = summary.route_lf;
+
+  const classLfData = summary.class_lf;
   const routeLabel = dashboardRoute === "전체" ? "국내선 전체" : dashboardRoute;
   const titleText = `${routeLabel} 판매현황 (최근 ${periodDays}일)`;
 
@@ -365,7 +310,7 @@ export default function Dashboard() {
         <KpiCard
           icon={<Plane size={20} className="text-amber-600" />}
           label="평균 Load Factor"
-          value={`${(avgLoadFactor * 100).toFixed(1)}%`}
+          value={`${avgLoadFactor.toFixed(1)}%`}
           sub={routeLabel}
           color="amber"
           testId="kpi-lf"
@@ -429,29 +374,28 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* Load Factor by Booking Class */}
+        {/* Class Avg LF */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5" data-testid="lf-by-class-chart">
           <h3 className="font-semibold text-gray-700 mb-4">
             등급별 평균 LF ({routeLabel})
           </h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={classData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="cls" tick={{ fontSize: 11, fontWeight: 600 }} />
-              <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(v) => [`${v}%`, "LF"]} />
-              <Bar dataKey="lf" radius={[4, 4, 0, 0]}>
-                {classData.map((d, i) => (
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={classLfData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+              <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} width={38} />
+              <Tooltip formatter={(v) => [`${v}%`, "평균 LF"]} />
+              <Bar dataKey="lf" radius={[4, 4, 0, 0]} maxBarSize={60}>
+                {classLfData.map((d, i) => (
                   <Cell key={i} fill={loadFactorColor(d.lf)} />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-
           <div className="flex gap-4 mt-3 justify-center text-xs text-gray-500">
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500 inline-block" />85%+</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-amber-500 inline-block" />65–85%</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-500 inline-block" />~65%</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500 inline-block" />85%+</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-amber-500 inline-block" />65–85%</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-blue-500 inline-block" />~65%</span>
           </div>
         </div>
       </div>
