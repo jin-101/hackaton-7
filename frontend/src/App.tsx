@@ -19,8 +19,9 @@ type PageId = (typeof NAV)[number]["id"];
 const PAGE_IDS = new Set<string>(NAV.map((n) => n.id));
 
 function getInitialPage(): PageId {
-  const path = window.location.pathname.replace(/^\//, "");
-  return PAGE_IDS.has(path) ? (path as PageId) : "dashboard";
+  const parts = window.location.pathname.replace(/^\//, "").split("/");
+  const topLevel = parts[0];
+  return PAGE_IDS.has(topLevel) ? (topLevel as PageId) : "dashboard";
 }
 
 function formatNow() {
@@ -38,8 +39,9 @@ export default function App() {
   // 브라우저 뒤로/앞으로 가기 지원
   useEffect(() => {
     const onPopState = () => {
-      const path = window.location.pathname.replace(/^\//, "");
-      setPage(PAGE_IDS.has(path) ? (path as PageId) : "dashboard");
+      const parts = window.location.pathname.replace(/^\//, "").split("/");
+      const topLevel = parts[0];
+      setPage(PAGE_IDS.has(topLevel) ? (topLevel as PageId) : "dashboard");
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);

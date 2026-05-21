@@ -81,6 +81,91 @@
 
 ---
 
+## 2026-05-21 — v7 Phase7: 운임관리 항공편명 UUID 표시 버그픽스
+
+**파일**: `frontend/src/components/FareManagement.tsx`, `frontend/src/data/mockData.ts`
+
+### 문제
+DB 연동 이후 운임관리 운항현황 목록, 상세 헤더, Profit Analysis 패널, 좌석 등급별 운임 관리 제목에서 편명이 `KE1201` 대신 `a1b2c3d4` 형태의 UUID로 표시됨
+
+### 원인
+- DB 연동 전: `DashboardFlight.id = sched.flightNo` (편명이 id 역할 겸용)
+- DB 연동 후: `DashboardFlight.id = f.flight_id` (DB UUID로 교체)
+- 그런데 편명 표시 위치는 여전히 `f.id` / `selectedFlight.id` 를 그대로 사용
+
+### 수정
+- `mockData.ts` — `DashboardFlight` 인터페이스에 `flightNo: string`, `route: string` 필드 추가
+- `mockData.ts` — `buildDashboardFlights()` 반환 객체에 `flightNo: sched.flightNo`, `route` 추가
+- `FareManagement.tsx` — 편명 렌더링 4곳을 `f.id` → `f.flightNo`, `selectedFlight.id` → `selectedFlight.flightNo`로 교체:
+  - 운항현황 목록 행 편명
+  - Step2 상단 헤더 편명
+  - Profit Analysis 패널 편명
+  - 좌석 등급별 운임 관리 제목 서브텍스트
+
+---
+
+## 2026-05-21 — v7 Phase6: 미구현 요구사항 3건 구현 (운임관리 상세 라우팅, 새로고침 좌석 시뮬레이션, 경쟁사 칩 제거)
+
+**파일**: `frontend/src/components/FareManagement.tsx`, `frontend/src/components/CompetitorMonitor.tsx`, `frontend/src/App.tsx`
+
+### 1. 운임관리 상세 페이지 URL 라우팅 (FR-01 신규)
+
+- **문제**: 운임관리에서 항공편 클릭 → Step2 상세 진입 후 새로고침 시 Step1 목록으로 초기화됨
+- **수정**: 상세 진입 시 `window.history.pushState({}, "", "/fares/{flightNo}")` 적용
+  - `goToDetail(flight)` / `goToList()` helper 함수 추가
+  - 초기 step: `window.location.pathname` 파싱 (`/fares/KE1201` 형태이면 `"detail"`)
+  - flights 로드 시 URL flightNo로 `selectedFlight` 복원
+  - `popstate` 이벤트 리스너로 뒤로/앞으로 가기 지원
+- **App.tsx**: `getInitialPage()` 및 `popstate` 핸들러에서 pathname을 `/` 기준 첫 세그먼트만 읽도록 수정 (`/fares/KE1201` → `fares` 탭)
+
+### 2. 새로고침 시 좌석 변동 시뮬레이션 (FR-01 신규)
+
+- **목적**: 새로고침 버튼 클릭 시 실시간 고객 활동(구매/환불)이 반영된 것처럼 데이터 변동
+- **구현**: `simulateCustomerActivity(flightList)` 함수 추가
+  - 각 클래스별로 랜덤 롤(0~1):
+    - 0.00~0.45: 구매 (`sold +1~+3`, 잔여석 범위 내)
+    - 0.45~0.65: 환불 (`sold -1~-2`)
+    - 0.65~1.00: 변동 없음
+  - Closed 클래스는 변동 제외
+  - sold 변동 후 `status` (Sold Out / Open) 자동 업데이트
+  - `Flight.lf` 재계산, `status` (수요급증/안정적/수요저조/매진임박) 재분류
+- 새로고침 버튼 핸들러에서 API 데이터·mock fallback 모두 `simulateCustomerActivity` 통과 후 상태 반영
+
+### 3. 경쟁사 모니터링 'DB 연동' 칩 제거 (FR-05 수정)
+
+- **문제**: 헤더에 `DB 연동` 칩이 표시되어 내부 구현 세부사항이 노출됨
+- **수정**: `CompetitorMonitor.tsx` 헤더에서 `<span>DB 연동</span>` 요소 제거
+
+---
+
+## 2026-05-21 — 시드 데이터 다양화 (등급별 LF 멀티플라이어, 노선별 수요 격차)
+
+**파일**: `backend/seed_data.py`
+
+### 문제
+- 모든 C/Y/M/V 클래스의 `sold_seats`가 동일한 `flight_lf × rand(0.8~1.1)` 로 계산되어 등급별 LF가 61~62%로 균일 → 차트 색상이 모두 파란색(~65%)
+
+### 해결
+`CLASS_LF_MULT` 테이블 추가 — 등급별 판매 패턴 차등화:
+- `C (프레스티지)` × 1.25 → 고수요, 85%+ 범주 진입 가능
+- `Y (일반 정상)` × 1.05 → 기준 근처
+- `M (일반 할인)` × 0.95 → 기준보다 약간 낮음
+- `V (특가)` × 0.65 → 저수요, 40~50% 범주
+
+`ROUTE_LF_OFFSET` 테이블 추가 — 노선별 수요 현실화:
+- ICN-CJU +0.10, GMP-CJU +0.08 (고수요 노선)
+- GMP-RSU -0.13, GMP-CJJ -0.15 (저수요 노선)
+
+`Flight.load_factor` = 전체 좌석 기준 가중 평균 (이전: 단순 랜덤 lf)
+
+DB 재시드 결과 (예: ICN-CJU 7일):
+- `C (프레스티지)`: 85.0% → 🔴 red
+- `Y (일반 정상)`: 74.3% → 🟡 amber
+- `M (일반 할인)`: 67.8% → 🟡 amber
+- `V (특가)`: 45.9% → 🔵 blue
+
+---
+
 ## 2026-05-21 — 등급별 평균 LF 차트 UI 개선 (수직 바 전환, 한글 레이블, 범례)
 
 **파일**: `frontend/src/components/Dashboard.tsx`, `backend/app/routers/dashboard.py`

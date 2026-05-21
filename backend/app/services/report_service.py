@@ -10,18 +10,24 @@ from app.schemas.schemas import (
     AiStatsSchema, RevenueDataPointSchema,
 )
 
-# Revenue targets per route per day (won) — based on route capacity/KPI baseline
+# Revenue targets per route per day (won) — calibrated against actual DB revenue
+# 노선별 실제 일평균 수익 기준으로 달성률이 다양하게 분포하도록 설정:
+#   GMP-CJU (황금노선 고목표)  → ~78% 미달  (도전적 목표)
+#   ICN-CJU (고수요)           → ~95% 근접  (거의 달성)
+#   GMP-PUS                    → ~88% 준달성
+#   ICN-PUS                    → ~105% 초과 달성
+#   지방 소수요 노선            → ~90~110% 다양
 ROUTE_DAILY_TARGET: dict[str, int] = {
-    "GMP-CJU": 9_000_000,
-    "GMP-PUS": 5_500_000,
-    "ICN-CJU": 8_000_000,
-    "GMP-TAE": 2_800_000,
-    "GMP-KWJ": 2_400_000,
-    "ICN-PUS": 4_500_000,
-    "GMP-KPO": 2_200_000,
-    "GMP-RSU": 2_000_000,
+    "GMP-CJU": 197_000_000,   # 일평균 154M → 달성률 ~78%
+    "GMP-PUS":  55_000_000,   # 일평균 48M  → 달성률 ~87%
+    "ICN-CJU":  72_000_000,   # 일평균 68M  → 달성률 ~94%
+    "GMP-TAE":  26_000_000,   # 일평균 24M  → 달성률 ~92%
+    "GMP-KWJ":  15_000_000,   # 일평균 17M  → 달성률 ~110% (초과)
+    "ICN-PUS":  22_000_000,   # 일평균 24M  → 달성률 ~107% (초과)
+    "GMP-KPO":  20_000_000,   # 일평균 18M  → 달성률 ~90%
+    "GMP-RSU":  12_000_000,   # 일평균 15M  → 달성률 ~124% (초과)
 }
-DEFAULT_DAILY_TARGET = 3_000_000
+DEFAULT_DAILY_TARGET = 25_000_000
 
 
 class ReportService:

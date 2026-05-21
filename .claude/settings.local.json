@@ -39,7 +39,14 @@
       "Bash(pkill -f \"uvicorn backend.app.main\")",
       "Bash(PYTHONPATH=/Users/choisoobhin/projects/ai-dlc/hackaton-7 /Users/choisoobhin/.pyenv/versions/3.13.1/bin/python -m uvicorn backend.app.main:app --port 8000 --host 127.0.0.1)",
       "Bash(echo \"PID: $!\")",
-      "Bash(PATH=__TRACKED_VAR__/.nvm/versions/node/v20.19.5/bin:__TRACKED_VAR__ npx vite build)"
+      "Bash(PATH=__TRACKED_VAR__/.nvm/versions/node/v20.19.5/bin:__TRACKED_VAR__ npx vite build)",
+      "Bash(PYTHONPATH=. /Users/choisoobhin/.pyenv/versions/3.13.1/bin/python backend/seed_data.py)",
+      "Bash(curl -s \"http://localhost:8000/health\")",
+      "Bash(PYTHONPATH=/Users/choisoobhin/projects/ai-dlc/hackaton-7:/Users/choisoobhin/projects/ai-dlc/hackaton-7/backend /Users/choisoobhin/.pyenv/versions/3.13.1/bin/python -m uvicorn backend.app.main:app --port 8000 --host 127.0.0.1)",
+      "Bash(curl -s \"http://localhost:8000/dashboard/summary?route_id=all&days=1\")",
+      "Bash(curl -s \"http://localhost:8000/dashboard/summary?route_id=ICN-CJU&days=1\")",
+      "Bash(curl -s \"http://localhost:8000/dashboard/summary?route_id=GMP-RSU&days=1\")",
+      "Bash(PYTHONPATH=/Users/choisoobhin/projects/ai-dlc/hackaton-7:/Users/choisoobhin/projects/ai-dlc/hackaton-7/backend /Users/choisoobhin/.pyenv/versions/3.13.1/bin/python -)"
     ],
     "additionalDirectories": [
       "/private/tmp"
