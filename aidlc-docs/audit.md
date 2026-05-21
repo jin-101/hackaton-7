@@ -1,5 +1,21 @@
 # AI-DLC Audit Log
 
+## [docs-claude-api-status] Documentation — Claude API 미연결 상태 설계서 명시
+**Timestamp**: 2026-05-22T06:50:00Z
+**User Input**: "claude code api 연결하는 것은 최종 연결까지 안한거로 아는데, 맞으면 자료에 관련해서 명시해 주는 것이 좋아 보이는데? 과금으로 인해서 실제 구현은 하지 않았다는 식으로"
+**AI Response**: "코드 확인 결과: ClaudeAiEngine.analyze_strategy()는 구현 완료, generate_recommendation()은 Mock 위임. ANTHROPIC_API_KEY 미설정으로 현재 전체 환경에서 MockAiEngine 동작 중. application-design-document.md: 7.1 Strategy Pattern에 현재 구현 상태 표(⚠️ Claude API 미연결) 추가, 7.2 분석 흐름에 현재 동작 설명 추가. architecture-design-document.md: ADR-003에 현재 상태 명시, 시스템 다이어그램 AI Engine 설명 수정, AI Engine 컴포넌트 구조에 각 메서드별 구현 상태 주석 추가."
+**Context**: DOCUMENTATION - Claude API 과금 미연결 사유 설계서 반영
+
+---
+
+## [docs-update-v8] Documentation — 설계서 v8 최신화
+**Timestamp**: 2026-05-22T06:30:00Z
+**User Input**: "다시 architecture-design-document.md 파일과 application-design-document.md 파일을 최신화 해줘."
+**AI Response**: "application-design-document.md: 버전 v7→v8, 날짜 최신화, 기종별 좌석 배분 수치 수정(seed_data.py 실제값 반영), BR-10/BR-11 가격·좌석 제약 추가, BR-12~14 인벤토리 확정 규칙 신규, 인벤토리 상태별 편집 제약 명세 추가, 날짜별 상태 격리 상세 기술. architecture-design-document.md: 버전 v7→v8, ADR-006(인벤토리 상태별 편집 제약 UI 레벨), ADR-007(좌석 총합 불변 원칙 프론트 사전 차단) 신규 추가, 기존 ADR-007→ADR-008 재번호, 시나리오 5(인벤토리 통제 확정 흐름) 추가."
+**Context**: DOCUMENTATION - v8 요구사항 반영 설계서 최신화
+
+---
+
 ## [backend-500-fix] Debug — HTTP 500 인벤토리 확정 API 해결
 **Timestamp**: 2026-05-22T06:01:00Z
 **User Input**: "인벤토리 실시간 통제 확정을 누르면 여전히 HTTP 500: Internal Server Error 오류가 나."

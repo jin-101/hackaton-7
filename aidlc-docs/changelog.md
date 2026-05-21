@@ -4,6 +4,46 @@
 
 ---
 
+## 2026-05-22 — 설계서에 Claude API 미연결 상태 명시
+
+**파일**: `aidlc-docs/design/application-design-document.md`, `aidlc-docs/design/architecture-design-document.md`
+
+### 변경 내용
+
+- Claude API 연동 구현 상태 명확화 (과금 우려로 `ANTHROPIC_API_KEY` 미설정)
+  - `analyze_strategy()`: 코드 구현 완료, API Key 설정 시 즉시 활성화 가능
+  - `generate_recommendation()`: MockAiEngine 위임만, 별도 구현 필요
+  - 현재 전체 환경에서 MockAiEngine으로 동작 중
+- application-design-document.md: 7.1에 ⚠️ 경고 박스 + 기능별 구현/동작 상태 표 추가
+- architecture-design-document.md: ADR-003에 현재 상태 명시, 시스템 다이어그램 및 컴포넌트 구조 설명 업데이트
+
+---
+
+## 2026-05-22 — 설계서 v8 최신화 (application-design-document, architecture-design-document)
+
+**파일**: `aidlc-docs/design/application-design-document.md`, `aidlc-docs/design/architecture-design-document.md`
+
+### 변경 내용
+
+**application-design-document.md**
+- 버전 v7 → v8, 날짜 2026-05-22 반영
+- 기종별 좌석 배분 수치 수정: B737-900ER(35/95/62), B737-800(28/76/46), A220-300(22/62/42) — seed_data.py 실제값 기준
+- BR-10 추가: Sold Out 가격 잠금, 좌석 수만 수정 가능
+- BR-11 추가: 좌석 총합 초과 시 에러 차단 (aiReallocateSeats eligibleMinSum 검증)
+- BR-12~14 신규: 인벤토리 확정 버튼 aiPrice 저장 규칙, 로컬 상태 동기화, 항상 표시
+- FareManagement 상세: 인벤토리 상태별 편집 제약(Open/Closed/Sold Out) 명세 추가
+- FareManagement 상세: 날짜별 상태 격리 키 형식(`"${date}:${flightId}"`) 명시
+- FareManagement 상세: 인벤토리 확정 흐름 상세 기술 추가
+
+**architecture-design-document.md**
+- 버전 v7 → v8, 날짜 2026-05-22 반영
+- ADR-006 신규: 인벤토리 상태별 편집 제약 UI 레벨 강제 결정
+- ADR-007 신규: 좌석 총합 불변 원칙 프론트엔드 사전 차단 결정
+- 기존 ADR-007 → ADR-008 재번호 (Property-Based Testing)
+- 시나리오 5 추가: 인벤토리 실시간 통제 확정 전체 흐름 (handleConfirmInventory → API → 상태 동기화)
+
+---
+
 ## 2026-05-22 — HTTP 500 백엔드 서버 재기동으로 확정 API 정상화
 
 **파일**: `backend/app/routers/fare.py` (임시 디버그 코드 추가 후 제거, 순 변경 없음)
