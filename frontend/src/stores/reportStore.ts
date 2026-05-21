@@ -18,13 +18,14 @@ const ROUTE_LF: Record<string, number> = {
 function buildMockReport(route: string | null, start: string, end: string): ReportDTO {
   const routes = route ? [route] : KE_ROUTES;
   const totalRevenue = routes.reduce((s, r) => s + (ROUTE_REVENUE[r] ?? 0), 0);
-  const totalTarget = Math.round(totalRevenue * 0.92);
+  // 목표: 전년 동기 대비 5% 성장 기준 (FSC 업계 표준)
+  const totalTarget = Math.round(totalRevenue * 1.05);
   const achieveRate = Math.round((totalRevenue / totalTarget) * 100);
 
   const routePerformance = routes.map((r) => ({
     route: r,
     revenue: ROUTE_REVENUE[r] ?? 0,
-    target: Math.round((ROUTE_REVENUE[r] ?? 0) * 0.92),
+    target: Math.round((ROUTE_REVENUE[r] ?? 0) * 1.05),
     loadFactor: ROUTE_LF[r] ?? 60,
   }));
 
@@ -47,6 +48,11 @@ function buildMockReport(route: string | null, start: string, end: string): Repo
     revenueHistory.push({ date: `${m}/${day}`, revenue: rev, bookings: Math.round(rev / 104000) });
   }
 
+  const approvedCount = 12;
+  // AI 기여: 승인 건별 (적용 운임 - 기준 운임) × 해당 클래스 평균 판매 좌석 수
+  // 평균 업리프트 단가 ~8,500원, 평균 적용 좌석 수 ~18석 (국내선 Y/M 클래스 기준)
+  const aiContribution = approvedCount * 8_500 * 18;
+
   return {
     reportId: `MOCK-${Date.now()}`,
     route,
@@ -55,9 +61,10 @@ function buildMockReport(route: string | null, start: string, end: string): Repo
     totalRevenue,
     totalTarget,
     achieveRate,
+    aiContribution,
     routePerformance,
     yieldTrend,
-    aiStats: { approvedCount: 12, rejectedCount: 3 },
+    aiStats: { approvedCount, rejectedCount: 3 },
     revenueHistory,
     createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
   };
@@ -112,6 +119,7 @@ export const useReportStore = create<ReportStore>((set, get) => ({
           totalRevenue: raw.total_revenue,
           totalTarget: raw.total_target,
           achieveRate: raw.achieve_rate,
+          aiContribution: raw.ai_stats.approved_count * 8_500 * 18,
           routePerformance: raw.route_performance.map((r) => ({
             route: r.route,
             revenue: r.revenue,

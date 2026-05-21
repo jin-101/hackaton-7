@@ -509,6 +509,77 @@ export default function FareManagement({ refreshKey }: { refreshKey?: number }) 
     flightId: string;
     cls: DashboardClass;
   } | null>(null);
+
+  // LF × D-Day × Elasticity 기반 클래스별 AI 분석 근거 생성
+  const buildAiReason = (
+    flight: DashboardFlight,
+    cls: DashboardClass,
+  ): { summary: string; bullets: string[] } => {
+    const lf = flight.lf;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const dep = flight.departureDate
+      ? new Date(flight.departureDate)
+      : new Date(selectedDate);
+    dep.setHours(0, 0, 0, 0);
+    const dDays = Math.max(0, Math.round((dep.getTime() - today.getTime()) / 86400000));
+    const paceVal = parseFloat((flight.pace ?? "0%").replace("%", "")) || 0;
+    const ELASTICITY: Record<string, number> = { C: -0.45, Y: -0.95, M: -1.35, V: -1.75 };
+    const elasticity = ELASTICITY[cls.code] ?? -0.95;
+    const changePct = Math.round((cls.aiPrice / cls.price - 1) * 100);
+
+    const lfLabel =
+      lf >= 80 ? "수요 급증 (High)" :
+      lf >= 65 ? "수요 안정 (Stable)" :
+      lf >= 30 ? "수요 부족 (Low)" : "수요 매우 저조 (Very Low)";
+    const dLabel = dDays === 0 ? "출발 당일" : `출발 D-${dDays}`;
+    const paceLabel =
+      paceVal > 3 ? `전주 대비 예약 속도 빠름 (+${paceVal}%)` :
+      paceVal < -3 ? `전주 대비 예약 속도 느림 (${paceVal}%)` :
+      "전주 대비 예약 속도 보통";
+    const elasticityLabel =
+      Math.abs(elasticity) >= 1.5 ? "고탄력 (가격 민감도 높음)" :
+      Math.abs(elasticity) >= 0.9 ? "중탄력" : "저탄력 (가격 민감도 낮음)";
+
+    const summary =
+      lf >= 80
+        ? `LF ${lf}% · ${dLabel} — 수요 초과 상태로 ${cls.name} 운임 ${changePct > 0 ? "+" : ""}${changePct}% 인상 추천`
+        : lf >= 65 && changePct > 0
+          ? `LF ${lf}% · ${dLabel} — 수요 안정, 소폭 인상으로 수익 마진 확보 추천`
+          : `LF ${lf}% · ${dLabel} — 수요 부족으로 ${cls.name} 운임 ${changePct}% 인하 추천`;
+
+    const bullets: string[] = [
+      `📊 Load Factor: ${lf}% (${lfLabel})`,
+      `📅 출발일까지: ${dLabel}`,
+      `⚡ 예약 속도: ${paceLabel}`,
+      `🎯 ${cls.name} 탄력성: ${elasticity} (${elasticityLabel})`,
+    ];
+
+    if (lf >= 80) {
+      if (dDays >= 15) bullets.push("📈 D-15 이상 — 최대 인상폭 적용 (+18% 기준)");
+      else if (dDays >= 7) bullets.push("📈 D-7~14 — 인상폭 중간 적용 (+12% 기준)");
+      else bullets.push("📈 D-7 미만 출발 임박 — 인상폭 제한 적용 (+8% 기준)");
+    } else if (lf >= 30) {
+      if (dDays <= 7) bullets.push("📉 출발 임박 + 수요 저조 — 파격 인하로 공석 최소화 (-15% 기준)");
+      else bullets.push("📉 출발 여유 있음 — 얼리버드 소폭 인하 권고 (-8% 기준)");
+    } else {
+      if (dDays <= 7) bullets.push("📉 출발 임박 + 수요 매우 저조 — 땡처리 할인 적용 (-25% 기준)");
+      else bullets.push("📉 출발 여유 있음 — 얼리버드 유인 할인 적용 (-12% 기준)");
+    }
+
+    if (Math.abs(elasticity) >= 1.5) {
+      bullets.push(`✂️ 고탄력 클래스: 인상폭 축소 / 인하폭 확대 보정 적용`);
+    } else if (Math.abs(elasticity) <= 0.5) {
+      bullets.push(`💎 저탄력 클래스: 인상폭 유지 (가격 변화에 수요 둔감)`);
+    }
+
+    if (Math.abs(paceVal) > 3) {
+      bullets.push(`🔄 Booking Velocity 보정: ${paceVal > 0 ? "+" : ""}${Math.round(paceVal * 0.3)}% 추가 조정`);
+    }
+
+    bullets.push(`🛡️ Guardrail: 현재가 ±30% 범위 내 클램핑 적용 (BR-03)`);
+
+    return { summary, bullets };
+  };
   // 주간 피커: 실제로 화면에 표시할 날짜(애니메이션 중엔 이전 날짜 유지)
   const [displayedDate, setDisplayedDate] = useState(todayStr);
   const [weekPhase, setWeekPhase] = useState<
@@ -849,10 +920,10 @@ export default function FareManagement({ refreshKey }: { refreshKey?: number }) 
     );
     const updated = flights.map((f) => {
       if (f.id !== selectedFlight.id) return f;
-      const newClasses = f.classes.map((c) => ({
-        ...c,
-        price: adjMap.has(c.code) ? adjMap.get(c.code)! : c.price,
-      }));
+      const newClasses = f.classes.map((c) => {
+        const newPrice = adjMap.has(c.code) ? adjMap.get(c.code)! : c.price;
+        return { ...c, price: newPrice, aiPrice: newPrice };
+      });
       const newCurrentPrice = newClasses.reduce(
         (min, c) => (c.price < min ? c.price : min),
         newClasses[0]?.price ?? f.currentPrice,
@@ -945,7 +1016,7 @@ export default function FareManagement({ refreshKey }: { refreshKey?: number }) 
       return {
         ...f,
         classes: f.classes.map((c) =>
-          c.code === classCode ? { ...c, price: c.aiPrice } : c,
+          c.code === classCode ? { ...c, price: c.aiPrice, aiPrice: c.aiPrice } : c,
         ),
       };
     });
@@ -1048,6 +1119,7 @@ export default function FareManagement({ refreshKey }: { refreshKey?: number }) 
           );
           const soldPct =
             cls.seats > 0 ? Math.round((cls.sold / cls.seats) * 100) : 0;
+          const aiReason = buildAiReason(selectedFlight, cls);
           return (
             <div
               className="fixed inset-0 z-50 flex items-center justify-center"
@@ -1119,9 +1191,16 @@ export default function FareManagement({ refreshKey }: { refreshKey?: number }) 
                       AI 분석 근거
                     </span>
                   </div>
-                  <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                    {selectedFlight.reason}
+                  <p className="text-xs font-black text-slate-800 mb-2 leading-snug">
+                    {aiReason.summary}
                   </p>
+                  <ul className="space-y-1">
+                    {aiReason.bullets.map((b, i) => (
+                      <li key={i} className="text-[11px] text-slate-600 leading-relaxed">
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
 
                 <div className="mb-5">
@@ -1825,10 +1904,22 @@ export default function FareManagement({ refreshKey }: { refreshKey?: number }) 
                         return visibleFlights.map((f) => {
                           const isSelected = f.id === selectedFlight.id;
                           const paceUp = f.pace.startsWith("+");
-                          const aiLabel = aiSuggestionLabel(
+                          const hasPendingRec = f.classes.some((c) => {
+                            const k = `${f.id}-${c.code}`;
+                            return (
+                              c.aiPrice !== c.price &&
+                              !rejectedClasses.has(k) &&
+                              !confirmedClasses.has(k)
+                            );
+                          });
+                          const rawLabel = aiSuggestionLabel(
                             f.currentPrice,
                             f.aiRecommended,
                           );
+                          const aiLabel =
+                            !hasPendingRec && rawLabel.text !== "유지"
+                              ? { text: "적용 완료", color: "text-green-600" }
+                              : rawLabel;
                           const hasCrossAi =
                             !!crossRouteAiPrices[selectedRoute]?.[f.id];
                           return (

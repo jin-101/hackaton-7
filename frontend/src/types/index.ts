@@ -159,6 +159,7 @@ export interface ReportDTO {
   totalRevenue: number;
   totalTarget: number;
   achieveRate: number;
+  aiContribution: number;
   routePerformance: RoutePerformanceDTO[];
   yieldTrend: YieldTrendDTO[];
   aiStats: AiStatsDTO;

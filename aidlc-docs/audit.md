@@ -1,5 +1,45 @@
 # AI-DLC Audit Log
 
+## [report-target-ai-contribution] Construction — 보고서 목표 기준 및 AI 기여 계산 수정
+**Timestamp**: 2026-05-21T19:00:00Z
+**User Input**: "수정해줘."
+**AI Response**: "목표를 revenue×0.92→×1.05(전년 대비 5% 성장)로 변경. AI 기여를 하드코딩 기준값 차감 방식 → 승인건×평균업리프트×평균좌석수(업리프트 방식)로 교체. ReportDTO에 aiContribution 필드 추가."
+**Context**: CONSTRUCTION PHASE - 보고서 데이터 현실화
+
+---
+
+## [ai-label-applied-fix] Construction — AI 추천 적용 후 레이블 미변경 버그 수정
+**Timestamp**: 2026-05-21T18:45:00Z
+**User Input**: "아직 수정이 안된 것 같아."
+**AI Response**: "근본 원인: applyAiClass/applyAiPopup이 price만 c.aiPrice로 갱신하고 aiPrice는 그대로 두어 c.aiPrice !== c.price 조건이 계속 true였음. 두 함수 모두 price와 함께 aiPrice도 동일값으로 갱신하도록 수정."
+**Context**: CONSTRUCTION PHASE - Bug Fix (레이블 상태 반영)
+
+---
+
+## [ai-label-applied] Construction — AI 추천 적용 후 운항 목록 레이블 "적용 완료"로 변경
+**Timestamp**: 2026-05-21T18:30:00Z
+**User Input**: "AI 추천 적용이 되어서 적용이 되고 나서도 AI 추천에 가격을 조정하라는 문구들은 그대로 남아있는 것 같아. 유지로 바꾸던가 다른 문구를 써야할 것 같아."
+**AI Response**: "운항 목록 aiLabel 계산 시 hasPendingRec 체크 추가. 모든 클래스 추천이 처리(적용/거부/확정)됐을 때 '가격을 올리세요'/'가격을 내리세요' → '적용 완료'(초록색)으로 전환."
+**Context**: CONSTRUCTION PHASE - UI Fix (레이블 상태 반영)
+
+---
+
+## [ai-detail-popup-reason] Construction — 상세보기 팝업 AI 분석 근거 표시
+**Timestamp**: 2026-05-21T18:00:00Z
+**User Input**: "좌석 등급별 운임 관리에서 '상세보기'를 누르면 나오는 팝업에서 AI 분석 근거에 내용이 나오고 있지 않아. 'LF × D-Day × 탄력성 하이브리드 AI 추천 구현' 알고리즘과 관련해서 근거를 만들어서 보여줘."
+**AI Response**: "buildAiReason() 헬퍼 추가. LF 구간·D-Day·Booking Velocity·탄력성·Guardrail 항목을 bullet으로 구성. 팝업 AI 분석 근거 섹션을 selectedFlight.reason(빈 문자열) 대신 buildAiReason() 결과로 교체."
+**Context**: CONSTRUCTION PHASE - UI Fix (팝업 근거 표시)
+
+---
+
+## [ai-rec-hybrid-pricing] Construction — LF × D-Day × 탄력성 하이브리드 AI 추천 구현
+**Timestamp**: 2026-05-21T17:00:00Z
+**User Input**: "구현해줘."
+**AI Response**: "pricing_build_guide.md §3 기반 calcAiPrice 함수 구현: LF+D-Day 조합 → Booking Velocity 보정 → 클래스별 탄력성 보정 → Guardrail(±30%)"
+**Context**: CONSTRUCTION PHASE - Feature Implementation
+
+---
+
 ## [ai-rec-lf-based] Construction — AI 추천 LF 기반으로 수정
 **Timestamp**: 2026-05-21T16:30:00Z
 **User Input**: "운임관리에서 AI 추천은 언제 해주는거야? 수요 저조, 매진임박과 상관 없는거야?"

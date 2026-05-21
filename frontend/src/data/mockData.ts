@@ -700,6 +700,7 @@ export interface DashboardFlight {
   reason: string; // AI 분석 근거
   aircraft: string; // 기종 (예: B737-900ER)
   totalSeats: number; // 총 좌석 수
+  departureDate?: string; // 출발일 (simulateFlight AI 재계산용)
 }
 
 export interface WeekDay {
@@ -1276,6 +1277,52 @@ function flightPattern(
 // 운임을 1,000원 단위로 반올림
 const r1k = (n: number) => Math.round(n / 1000) * 1000;
 
+/**
+ * LF × D-Day × Booking Velocity × Elasticity × Guardrail 기반 AI 추천 운임 계산.
+ * buildDashboardFlights 및 simulateFlight 양쪽에서 공유.
+ */
+export function calcAiPrice(
+  basePrice: number,
+  elasticity: number,
+  lf: number,
+  daysUntilDep: number,
+  paceVal: number,
+): { price: number; hasRec: boolean } {
+  let mul = 1.0;
+  let hasRec = false;
+
+  if (lf >= 80) {
+    if (daysUntilDep >= 15) { mul = 1.18; }
+    else if (daysUntilDep >= 7) { mul = 1.12; }
+    else { mul = 1.08; }
+    hasRec = true;
+  } else if (lf >= 50) {
+    if (lf >= 65 && daysUntilDep >= 7) { mul = 1.04; hasRec = true; }
+  } else if (lf >= 30) {
+    mul = daysUntilDep <= 7 ? 0.85 : 0.92;
+    hasRec = true;
+  } else {
+    mul = daysUntilDep <= 7 ? 0.75 : 0.88;
+    hasRec = true;
+  }
+
+  if (!hasRec) return { price: basePrice, hasRec: false };
+
+  const velocityAdj = 1 + paceVal * 0.003;
+  mul *= velocityAdj;
+
+  const elasticityWeight = Math.max(0.6, 1 - (Math.abs(elasticity) - 0.45) * 0.3);
+  if (mul > 1) { mul = 1 + (mul - 1) * elasticityWeight; }
+  else { mul = 1 - (1 - mul) / elasticityWeight; }
+
+  const rawPrice = r1k(basePrice * mul);
+  const clamped = Math.min(
+    Math.max(rawPrice, Math.round(basePrice * 0.7 / 1000) * 1000),
+    Math.round(basePrice * 1.3 / 1000) * 1000,
+  );
+  return { price: clamped, hasRec: true };
+}
+
 export function buildDashboardFlights(
   route: string,
   dateStr?: string,
@@ -1310,9 +1357,20 @@ export function buildDashboardFlights(
     const priceM = r1k(priceY * mMul);
     const priceV = r1k(priceY * vMul);
 
-    // AI 추천가: 수요 급증(LF≥80) → 인상, 수요 저조(LF≤55) → 인하, 안정적(56~79) → 추천 없음
-    const hasAiRec = lf >= 80 || lf <= 55;
-    const aiMul = lf >= 80 ? 1.12 : lf <= 55 ? 0.9 : 1.0;
+    // ── AI 추천가: LF × D-Day × 클래스 탄력성 × Guardrail ─────────────────
+    // D-Day: 출발일(date)과 오늘의 차이(일수)
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const dep   = new Date(date); dep.setHours(0, 0, 0, 0);
+    const daysUntilDep = Math.max(0, Math.round((dep.getTime() - today.getTime()) / 86400000));
+
+    // Booking Velocity: pace 문자열("+8%", "-5%" 등)에서 숫자 추출
+    const paceVal = parseFloat(pace.replace("%", "")) || 0; // 양수=빠름, 음수=느림
+
+    const recC = calcAiPrice(priceC, -0.45, lf, daysUntilDep, paceVal);
+    const recY = calcAiPrice(priceY, -0.95, lf, daysUntilDep, paceVal);
+    const recM = calcAiPrice(priceM, -1.35, lf, daysUntilDep, paceVal);
+    const recV = calcAiPrice(priceV, -1.75, lf, daysUntilDep, paceVal);
+    const hasAiRec = recY.hasRec; // Y 기준으로 항공편 전체 추천 여부 결정
 
     // 기종별 baseCost 보정
     const sizeMul =
@@ -1402,7 +1460,7 @@ export function buildDashboardFlights(
       aircraft: sched.aircraft,
       totalSeats: cfg.total,
       currentPrice: priceY,
-      aiRecommended: hasAiRec ? r1k(priceY * aiMul) : priceY,
+      aiRecommended: recY.hasRec ? recY.price : priceY,
       baseCost,
       classes: [
         {
@@ -1411,7 +1469,7 @@ export function buildDashboardFlights(
           seats: cfg.c,
           sold: soldC,
           price: priceC,
-          aiPrice: hasAiRec ? r1k(priceC * aiMul) : priceC,
+          aiPrice: recC.hasRec ? recC.price : priceC,
           status: soldC >= cfg.c ? ("Sold Out" as const) : ("Open" as const),
         },
         {
@@ -1420,7 +1478,7 @@ export function buildDashboardFlights(
           seats: seatsY,
           sold: soldY,
           price: priceY,
-          aiPrice: hasAiRec ? r1k(priceY * aiMul) : priceY,
+          aiPrice: recY.hasRec ? recY.price : priceY,
           status: soldY >= seatsY ? ("Sold Out" as const) : ("Open" as const),
         },
         {
@@ -1429,7 +1487,7 @@ export function buildDashboardFlights(
           seats: seatsM,
           sold: soldM,
           price: priceM,
-          aiPrice: hasAiRec ? r1k(priceM * aiMul) : priceM,
+          aiPrice: recM.hasRec ? recM.price : priceM,
           status: soldM >= seatsM ? ("Sold Out" as const) : ("Open" as const),
         },
         {
@@ -1438,16 +1496,23 @@ export function buildDashboardFlights(
           seats: seatsV,
           sold: soldV,
           price: priceV,
-          aiPrice: r1k(priceV * (lf >= 80 ? 1.05 : 0.95)),
+          aiPrice: recV.hasRec ? recV.price : priceV,
           status: vStatus,
         },
       ],
-      reason:
-        lf >= 82
-          ? `예약 페이스 과거 대비 빠름(LF ${lf}%). ${sched.aircraft} 운항. 상위 클래스 운임 즉시 인상 권고.`
-          : lf <= 55
-            ? `예약 유입 저조(LF ${lf}%). ${sched.aircraft} 운항. 하위 클래스 공급 확대 및 할인 운임 인하 필요.`
-            : `수요 안정적(LF ${lf}%). ${sched.aircraft} 운항. 현행 운임 수준 유지 권고.`,
+      reason: (() => {
+        const dLabel = daysUntilDep <= 7 ? `출발 D-${daysUntilDep}` : `출발 D-${daysUntilDep}`;
+        const velocityLabel = paceVal > 0 ? `예약 속도 전주 대비 ${pace} 빠름` : paceVal < 0 ? `예약 속도 전주 대비 ${pace} 느림` : "예약 속도 보통";
+        if (lf >= 80) {
+          return `LF ${lf}% (${dLabel}) — ${velocityLabel}. 수요 초과 상태로 클래스별 탄력성 반영 인상 추천. C +${Math.round((recC.price/priceC-1)*100)}% / Y +${Math.round((recY.price/priceY-1)*100)}%.`;
+        } else if (lf <= 55) {
+          return `LF ${lf}% (${dLabel}) — ${velocityLabel}. 수요 부족으로 할인 추천. ${daysUntilDep <= 7 ? "출발 임박, 파격 할인으로 공석 최소화." : "얼리버드 유지 또는 소폭 인하 권고."}`;
+        } else if (hasAiRec) {
+          return `LF ${lf}% (${dLabel}) — ${velocityLabel}. 수요 안정적, 소폭 인상으로 마진 확보 권고.`;
+        }
+        return `LF ${lf}% (${dLabel}) — ${velocityLabel}. 수요 안정적. 현행 운임 수준 유지 권고.`;
+      })(),
+      departureDate: date,
     };
   });
 }
@@ -1459,7 +1524,7 @@ const statusFromLf = (lf: number): FlightStatus => {
   return "수요 저조";
 };
 
-/** 단일 항공편에 고객 활동 시뮬레이션 (구매/환불 랜덤 델타) 적용 */
+/** 단일 항공편에 고객 활동 시뮬레이션 (구매/환불 랜덤 델타) 적용 + AI 추천가 재계산 */
 export function simulateFlight(f: DashboardFlight): DashboardFlight {
   const updatedClasses = f.classes.map((cls) => {
     if (cls.status === "Closed") return cls;
@@ -1480,5 +1545,36 @@ export function simulateFlight(f: DashboardFlight): DashboardFlight {
   const totalSold = updatedClasses.reduce((s, c) => s + c.sold, 0);
   const totalSeats = updatedClasses.reduce((s, c) => s + c.seats, 0);
   const newLf = Math.round((totalSold / totalSeats) * 100);
-  return { ...f, classes: updatedClasses, lf: newLf, status: statusFromLf(newLf) };
+
+  // 새 LF 기준으로 Pace 재계산 (이전 LF 대비 변화량 → 예약 속도 근사)
+  const lfDelta = newLf - f.lf;
+  const newPace = lfDelta >= 0 ? `+${lfDelta}%` : `${lfDelta}%`;
+  const newPaceVal = lfDelta;
+
+  // D-Day 계산 (departureDate 있으면 사용, 없으면 0)
+  const todayMs = new Date().setHours(0, 0, 0, 0);
+  const depMs = f.departureDate
+    ? new Date(f.departureDate).setHours(0, 0, 0, 0)
+    : todayMs;
+  const daysUntilDep = Math.max(0, Math.round((depMs - todayMs) / 86400000));
+
+  // 새 LF 기준 AI 추천가 재계산
+  const ELASTICITY: Record<string, number> = { C: -0.45, Y: -0.95, M: -1.35, V: -1.75 };
+  const recalcedClasses = updatedClasses.map((cls) => {
+    const elasticity = ELASTICITY[cls.code] ?? -0.95;
+    const rec = calcAiPrice(cls.price, elasticity, newLf, daysUntilDep, newPaceVal);
+    return { ...cls, aiPrice: rec.hasRec ? rec.price : cls.price };
+  });
+
+  const recY = recalcedClasses.find((c) => c.code === "Y");
+  const newAiRecommended = recY ? recY.aiPrice : f.aiRecommended;
+
+  return {
+    ...f,
+    classes: recalcedClasses,
+    lf: newLf,
+    status: statusFromLf(newLf),
+    pace: newPace,
+    aiRecommended: newAiRecommended,
+  };
 }

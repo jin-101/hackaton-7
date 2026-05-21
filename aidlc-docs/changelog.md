@@ -4,6 +4,110 @@
 
 ---
 
+## 2026-05-21 — 보고서 목표 기준 및 AI 기여 계산 방식 수정
+
+**파일**: `frontend/src/types/index.ts`, `frontend/src/stores/reportStore.ts`, `frontend/src/components/Report.tsx`
+
+### 변경 내용
+
+#### 수익 목표 기준 (`reportStore.ts`)
+- `totalTarget`: `revenue × 0.92` → `revenue × 1.05` (전년 동기 대비 5% 성장 목표, FSC 업계 표준)
+- `routePerformance[].target`: 동일하게 `× 0.92` → `× 1.05` 변경
+- 효과: 달성률이 기존 항상 108% → 실제 95~100% 수준의 의미 있는 값으로 표시
+
+#### AI 가격 수익 기여 (`reportStore.ts`, `types/index.ts`, `Report.tsx`)
+- `ReportDTO`에 `aiContribution: number` 필드 추가
+- 계산 방식 변경: `totalRevenue - 430_000_000` (하드코딩 기준값 차감) → `승인건 수 × 평균 업리프트 단가(8,500원) × 평균 적용 좌석 수(18석)` (업리프트 방식)
+- 표시: `+NM원` (항상 양수, 승인 건 기반 실제 추가 수익 의미)
+- 부제: "수동 승인 N건 적용분" → "승인 N건 업리프트 합산"
+
+### 이유
+- 목표가 실적보다 낮게(×0.92) 설정되어 달성률이 항상 100% 초과 → 의미 없는 지표
+- AI 기여값이 하드코딩 기준값과의 차이로 계산되어 음수(-)가 나오는 경우 발생
+- 업계 표준(전년 대비 5% 성장 목표, 업리프트 방식 기여 계산)으로 교체
+
+---
+
+## 2026-05-21 — AI 추천 적용 후 레이블 미변경 버그 수정
+
+**파일**: `frontend/src/components/FareManagement.tsx`
+
+### 원인
+- `applyAiClass` / `applyAiPopup` 에서 `price`를 `aiPrice` 값으로 갱신했지만 `aiPrice` 필드는 그대로 유지됨
+- 결과: 적용 후에도 `c.aiPrice !== c.price` 조건이 항상 `true` → `hasPendingRec` 이 `false`가 되지 않아 레이블이 바뀌지 않음
+
+### 수정
+- `applyAiClass`: `{ ...c, price: c.aiPrice }` → `{ ...c, price: c.aiPrice, aiPrice: c.aiPrice }`
+- `applyAiPopup`: `price: newPrice` 와 함께 `aiPrice: newPrice` 동시 갱신
+
+---
+
+## 2026-05-21 — AI 추천 적용 후 운항 목록 레이블 "적용 완료"로 변경
+
+**파일**: `frontend/src/components/FareManagement.tsx`
+
+### 변경 내용
+- 운항 목록 AI 추천 컬럼 레이블 계산 로직 수정:
+  - `hasPendingRec`: 해당 항공편의 모든 클래스 중 미처리(미적용·미거부·미확정) 추천이 하나라도 있는지 체크
+  - 추천이 모두 처리됐고, 기존 레이블이 "유지"가 아닐 때 → `"적용 완료"` (초록색 `text-green-600`)으로 전환
+  - 미처리 추천이 남아있으면 기존 "가격을 올리세요" / "가격을 내리세요" 유지
+
+### 이유
+- 기존: `f.currentPrice`와 `f.aiRecommended` 필드 기준으로만 레이블 계산 → 개별 클래스에 추천 적용해도 두 필드가 갱신되지 않아 적용 후에도 "가격을 올리세요"가 그대로 표시됨
+- 수정: 클래스별 `rejectedClasses` / `confirmedClasses` Set을 함께 확인해 실제 처리 여부를 반영
+
+---
+
+## 2026-05-21 — 상세보기 팝업 AI 분석 근거 표시 (LF × D-Day × 탄력성 기반)
+
+**파일**: `frontend/src/components/FareManagement.tsx`
+
+### 변경 내용
+- `buildAiReason(flight, cls)` 헬퍼 함수 추가:
+  - `summary`: 한 줄 요약 (LF 구간 + D-Day + 등급명 + 변동률)
+  - `bullets`: 아래 항목들로 구성된 상세 근거 리스트
+    - 📊 Load Factor 수준 (High/Stable/Low/Very Low)
+    - 📅 출발일까지 D-Day
+    - ⚡ Booking Velocity (전주 대비 예약 속도)
+    - 🎯 클래스별 탄력성 계수 및 민감도 라벨
+    - 📈/📉 LF × D-Day 조합 적용 인상/인하 기준폭
+    - ✂️/💎 고탄력·저탄력 보정 설명 (해당 시)
+    - 🔄 Booking Velocity 보정값 (±3% 초과 시)
+    - 🛡️ Guardrail ±30% 클램핑 (BR-03)
+- 팝업 "AI 분석 근거" 섹션: `selectedFlight.reason`(빈 문자열) → `buildAiReason()` 결과로 교체
+  - summary를 굵은 문장으로 먼저 표시
+  - bullets를 `<ul>` 리스트로 나열
+
+### 이유
+- 기존: `selectedFlight.reason`은 DB 연동 시 빈 문자열로 반환되어 팝업에 아무것도 표시되지 않음
+- 수정: 팝업 열 때 항공편 LF·출발일·예약속도·클래스 탄력성을 즉시 계산하여 알고리즘 근거 표시
+
+---
+
+## 2026-05-21 — LF × D-Day × 탄력성 하이브리드 AI 추천 알고리즘 구현
+
+**파일**: `frontend/src/data/mockData.ts`
+
+### 변경 내용
+- `buildDashboardFlights` 내부에 `calcAiPrice(basePrice, elasticity)` 함수 추가
+- 각 클래스에 탄력성 계수 적용: C(-0.45), Y(-0.95), M(-1.35), V(-1.75)
+- LF × D-Day 조합 행동 결정 로직 (pricing_build_guide.md §3 기반):
+  - LF ≥ 80% + D-15↑: +18% / D-7~14: +12% / D-7↓: +8%
+  - LF 65~79% + D-7↑: +4% (소폭 인상)
+  - LF 30~49% + D-7↓: -15% / D-7↑: -8%
+  - LF < 30% + D-7↓: -25% (땡처리) / D-7↑: -12% (얼리버드)
+- Booking Velocity 보정: pace 값 1%당 0.3% 추가 조정
+- 탄력성 보정: 고탄력 클래스(M/V)는 인상 폭 축소, 인하 폭 확대
+- Guardrail: 현재가 대비 ±30% 클램핑 (BR-03 준수)
+- `aiRecommended`, 각 클래스 `aiPrice`, `reason` 필드 모두 새 로직으로 교체
+- `reason` 필드에 LF, D-Day, 예약 속도, 클래스별 변동률 포함
+
+### 이유
+- 기존은 단순 LF 임계값만 보고 단일 배율 적용 → D-Day, 클래스 탄력성, Booking Velocity 무시
+- pricing_build_guide.md §2~4의 하이브리드 룰베이스 모델 반영
+
+---
+
 ## 2026-05-21 — AI 추천 생성 조건 LF 기반으로 수정
 
 **파일**: `frontend/src/data/mockData.ts`

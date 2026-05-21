@@ -119,8 +119,8 @@ export default function Report() {
                   />
                   <SummaryCard
                     label="AI 가격 수익 기여"
-                    value={`+${((reportData.totalRevenue - 430_000_000) / 1_000_000).toFixed(0)}M원`}
-                    sub={`수동 승인 ${reportData.aiStats.approvedCount}건 적용분`}
+                    value={`+${(reportData.aiContribution / 1_000_000).toFixed(1)}M원`}
+                    sub={`승인 ${reportData.aiStats.approvedCount}건 업리프트 합산`}
                     highlight
                   />
                 </div>
