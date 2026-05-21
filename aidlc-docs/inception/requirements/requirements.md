@@ -4,7 +4,7 @@
 
 > **관리 정책**: 이 파일은 항상 최신 전체 요구사항을 반영합니다.
 > 변경 시 해당 delta 파일(`requirements_delta_vN.md`)을 먼저 작성하고 이 파일에 통합하세요.
-> 마지막 통합 기준: **v1 + v2 + changelog + v3 + jin v1~v2 (좌석 로직 개편) + jin v2 보완 (Closed 운임 잠금) + 버그수정 (Sold Out→Open 복구, 2026-05-18) + v4 (Step1/2 화면 전환, 좌석 배치도, EMSRb·Dynamic Pricing, 좌석 크기·간격 개선, 2026-05-19) + v6 (실제 운항 노선 제한, 금액 콤마 표기, 반응형, 대시보드 데이터 연동, 운임관리 UI 개선, 시뮬레이터 국내선 전체, 보고서 기간 필터, 2026-05-21) + v7 Phase1 (Dashboard/CompetitorMonitor/Report/FareManagement DB 연동, 2026-05-21) + v7 Phase2 (가격·공급석 수정 즉시 DB 반영, 경쟁사 C클래스 더미 데이터 추가, 2026-05-21) + v7 Phase3 (Vite proxy 포트 오류 수정 8080→8000, API 502 해결, 2026-05-21) + v7 Phase4 (등급별 평균 LF 차트 복원, 항공편별 LF 기간 필터 연동, 2026-05-21) + v7 Phase5 (/#/ 제거→History API 경로 라우팅, /api 접두어 통합, 2026-05-21)**
+> 마지막 통합 기준: **v1 + v2 + changelog + v3 + jin v1~v2 (좌석 로직 개편) + jin v2 보완 (Closed 운임 잠금) + 버그수정 (Sold Out→Open 복구, 2026-05-18) + v4 (Step1/2 화면 전환, 좌석 배치도, EMSRb·Dynamic Pricing, 좌석 크기·간격 개선, 2026-05-19) + v6 (실제 운항 노선 제한, 금액 콤마 표기, 반응형, 대시보드 데이터 연동, 운임관리 UI 개선, 시뮬레이터 국내선 전체, 보고서 기간 필터, 2026-05-21) + v7 Phase1 (Dashboard/CompetitorMonitor/Report/FareManagement DB 연동, 2026-05-21) + v7 Phase2 (가격·공급석 수정 즉시 DB 반영, 경쟁사 C클래스 더미 데이터 추가, 2026-05-21) + v7 Phase3 (Vite proxy 포트 오류 수정 8080→8000, API 502 해결, 2026-05-21) + v7 Phase4 (등급별 평균 LF 차트 복원, 항공편별 LF 기간 필터 연동, 2026-05-21) + v7 Phase5 (/#/ 제거→History API 경로 라우팅, /api 접두어 통합, 2026-05-21) + v7 Phase6 (운임관리 상세 URL 라우팅, 새로고침 좌석 시뮬레이션, 경쟁사 DB연동 칩 제거, 2026-05-21) + v7 Phase7 (운임관리 항공편명 UUID→편명 표시 버그픽스, DashboardFlight flightNo/route 필드 추가, 2026-05-21)**
 
 ---
 
@@ -45,6 +45,9 @@
 - **좌석 공급석 input 동적 너비**: 좌석 수 수정 input 영역에서 숫자가 잘리지 않도록 자릿수에 비례한 동적 width 적용 (최소 4rem, 자릿수×0.9rem + 1.5rem padding 여유). 3자리 초과 시에도 숫자가 온전히 표시됨
 - **가격 수정 DB 즉시 반영 (v7)**: 운임 가격을 직접 편집(input → Enter/blur)하는 순간 `PUT /fares/{flightId}` API를 호출하여 DB에 즉시 저장. 인벤토리 확정 버튼과 무관하게 편집 즉시 반영됨
 - **공급석 수정 DB 즉시 반영 (v7)**: 공급석 수를 수정하면 AI 재배분 후 전 클래스에 대해 `PUT /fares/{flightId}/seats` API를 호출하여 DB에 즉시 저장
+- **상세 페이지 URL 라우팅 (v7 Phase6)**: 항공편 클릭 시 URL이 `/fares/{flightNo}` 형태로 변경됨. 새로고침 시에도 상세 페이지 유지. 브라우저 뒤로/앞으로 가기로 Step1 목록 ↔ Step2 상세 전환 지원. `goToDetail()` / `goToList()` helper 및 `popstate` 이벤트 리스너 사용.
+- **새로고침 시 고객 활동 시뮬레이션 (v7 Phase6)**: 새로고침 버튼 클릭 시 고객 구매(확률 45%, +1~3석) / 환불(확률 20%, -1~2석) / 변동없음(35%)을 클래스별 랜덤 적용하여 sold_seats·LF·status가 실시간으로 변동된 것처럼 표시. Closed 클래스 제외.
+- **항공편명 표시 버그픽스 (v7 Phase7)**: DB 연동 후 운항현황 목록·상세 헤더 등에서 편명이 UUID(`a1b2c3d4`) 형태로 표시되는 문제 수정. `DashboardFlight` 인터페이스에 `flightNo: string` 및 `route: string` 필드를 추가하고, 편명 렌더링 위치 전체를 `flightNo`로 교체. `buildDashboardFlights()` mock 반환 객체에도 두 필드 추가.
 - **노선 선택 제한**: 실제 대한항공 국내선 운항 노선만 선택 가능 (현재 미운항 노선은 선택 불가)
 - 대한항공 국내선 실제 운항 노선 운임 관리 (GMP-CJU, GMP-PUS, GMP-TAE, GMP-KWJ, ICN-CJU, ICN-PUS, GMP-KPO, GMP-RSU 등 8개 노선) — GMP-CJJ(김포-청주)·ICN-CJJ(인천-청주)는 대한항공 미운항으로 제외
 - 가격 산정 단위 구분:
@@ -147,6 +150,7 @@
 ### FR-05: 경쟁사 가격 모니터링 (Competitor Price Monitoring)
 
 - **DB 연동 (v7)**: `GET /competitors/{route}/comparison?date=X` API 호출로 실제 competitor_prices 테이블 데이터 표시. Mock 제거.
+- **'DB 연동' 헤더 칩 제거 (v7 Phase6)**: 경쟁사 모니터링 헤더에서 내부 구현 세부사항인 'DB 연동' 칩 제거.
 - 항공사명: **대한항공** 기준 자사 vs 경쟁사 비교
 - 부킹 클래스 기준: **C/Y/M/V** (프레스티지/일반석 정상/일반석 할인/일반석 특가) 통일
 - 노선 탭: `KE_DOMESTIC_ROUTES` 8개 노선으로 통일 (GMP-CJJ 제외)
@@ -366,3 +370,5 @@
 | v7 Phase3 | 2026-05-21 | Vite proxy target 8080→8000 오류 수정, API 502 Bad Gateway 해결 | `requirements_delta_v7.md` |
 | v7 Phase4 | 2026-05-21 | 대시보드 등급별 평균 LF 차트 복원(ClassLfSchema 신규), 항공편별 LF 기간 필터 연동(기간 내 집계로 변경) | `requirements_delta_v7.md` |
 | v7 Phase5 | 2026-05-21 | /#/ 제거 → History API 경로 라우팅(/fares, /report 등), /api 접두어 통합, Vite proxy rewrite 적용(NFR-08 신규) | `requirements_delta_v7.md` |
+| v7 Phase6 | 2026-05-21 | 운임관리 상세 URL 라우팅(/fares/{flightNo}, 새로고침 유지), 새로고침 시 고객 활동 시뮬레이션(구매/환불/변경 랜덤 반영), 경쟁사 모니터링 'DB 연동' 헤더 칩 제거 | `requirements_delta_v7.md` |
+| v7 Phase7 | 2026-05-21 | 운임관리 항공편명 UUID→KE편명 표시 버그픽스, DashboardFlight 인터페이스 flightNo·route 필드 추가 | `requirements_delta_v7.md` |

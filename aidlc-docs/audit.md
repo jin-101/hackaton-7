@@ -1,5 +1,94 @@
 # AI-DLC Audit Log
 
+## [v7-phase7-flightno-bugfix] Construction — 운임관리 항공편명 UUID 표시 버그픽스
+**Timestamp**: 2026-05-21T22:30:00Z
+**User Input**: "운임 관리 탭에서 항공편명이 이상한 값들로 바껴있는데 기존처럼 정상적으로 표시되도록 수정해줘"
+**AI Response**: "DashboardFlight 인터페이스에 flightNo/route 필드 추가, buildDashboardFlights mock 반환 객체 보완, FareManagement 편명 렌더링 4곳을 flightNo로 교체. TS 컴파일 오류 없음 확인."
+**Context**: CONSTRUCTION PHASE - 버그픽스 (v7 Phase7)
+
+### 원인 분석
+- DB 연동(v7 Phase1) 전: `id = sched.flightNo` → `f.id`로 편명 표시 가능
+- DB 연동 후: `id = f.flight_id` (8자리 UUID) → `f.id`가 UUID가 되어 편명 깨짐
+- `DashboardFlight` 타입에 `flightNo` 필드가 없었음
+
+### 수정 파일
+| 파일 | 변경 내용 |
+|------|----------|
+| `frontend/src/data/mockData.ts` | `DashboardFlight` 인터페이스에 `flightNo: string`, `route: string` 추가; `buildDashboardFlights()` 반환 객체에 두 필드 추가 |
+| `frontend/src/components/FareManagement.tsx` | 편명 표시 4곳: `f.id` → `f.flightNo`, `selectedFlight.id` → `selectedFlight.flightNo` |
+
+### 검증
+- `npx tsc --noEmit` 오류 없음
+
+---
+
+## [v7-requirements-doc-update] Requirements Analysis — v7 Phase6~7 문서 업데이트
+**Timestamp**: 2026-05-21T22:30:00Z
+**User Input**: "지금까지 추가 요청한 사항을 requirements_delta_v7.md에 추가해주고, 그 내용을 전체수정사항(requirements.md)에도 반영 반영해줘. 그리고 변경이력을 모두 changelog.md와 audit.md에 기록해줘."
+**AI Response**: "requirements_delta_v7.md에 Phase7(항공편명 버그픽스) 추가. requirements.md 머릿말·FR-01·변경이력 테이블 업데이트. changelog.md·audit.md에 Phase7 항목 추가 완료."
+**Context**: INCEPTION PHASE - Requirements Analysis (v7 Phase7 문서화)
+
+---
+
+## [v7-phase6-remaining-requirements] Construction — v7 미구현 요구사항 3건 구현
+**Timestamp**: 2026-05-21T22:00:00Z
+**User Input**: "requirements_delta_v7.md 요구사항 중 수정되지 않은 요구사항들만 ai-dlc 방법론을 적용해서 수정해주고, 그 내용을 전체수정사항(requirements.md)에도 반영 반영해줘. 그리고 변경이력을 모두 changelog.md와 audit.md에 기록해줘."
+**AI Response**: "requirements_delta_v7.md에서 미구현 3건 파악 후 구현: 운임관리 상세 URL 라우팅, 새로고침 좌석 시뮬레이션, 경쟁사 DB연동 칩 제거. requirements.md/changelog.md/audit.md 문서 업데이트 완료."
+**Context**: CONSTRUCTION PHASE - v7 Phase6 미구현 요구사항 완성
+
+### 미구현 항목 파악
+
+`requirements_delta_v7.md` 분석 결과, 아래 3개 항목이 미구현 상태였음:
+
+1. **운임 관리 탭 상세 라우팅**: "운임 관리 탭에서 특정 항공편 선택해서 상세 페이지 진입한 후 새로고침시에도 상세 페이지에 머물도록 해당 페이지도 라우터 적용"
+2. **새로고침 시 좌석 변동**: "새로고침 클릭시 고객이 좌석 변경, 환불, 구매하는 행위에 따라 데이터가 변경되도록 눈에 보이도록 구성"
+3. **경쟁사 모니터링 'DB 연동' 칩 제거**: "`경쟁사 모니터링 탭에서 'DB 연동' 칩은 제거해줘`"
+
+### 구현 내용
+
+#### 1. 운임관리 상세 페이지 URL 라우팅 (`FareManagement.tsx`, `App.tsx`)
+- `goToDetail(flight)`: `pushState("/fares/{flightNo}")` + step="detail" 전환
+- `goToList()`: `pushState("/fares")` + step="list" 전환
+- 초기 step 결정: pathname `/fares/KE1201` → `"detail"`, `/fares` → `"list"`
+- flights 로드 후 URL flightNo로 selectedFlight 복원
+- `popstate` 리스너로 브라우저 뒤로/앞으로 가기 지원
+- App.tsx: `getInitialPage()` + `popstate` 핸들러에서 pathname 첫 세그먼트만 사용
+
+#### 2. 새로고침 좌석 변동 시뮬레이션 (`FareManagement.tsx`)
+- `simulateCustomerActivity()` 함수 추가
+- 클래스별 랜덤 고객 활동: 구매(45% 확률, +1~3석) / 환불(20% 확률, -1~2석) / 변동없음(35%)
+- Closed 클래스 제외, sold 한계값 검증
+- LF 및 flight status 재계산 후 setFlights/setSelectedFlight 반영
+
+#### 3. 경쟁사 'DB 연동' 칩 제거 (`CompetitorMonitor.tsx`)
+- 헤더 `<span>DB 연동</span>` 요소 제거
+
+---
+
+## [seed-diverse-lf] Construction — 시드 데이터 다양화 (등급별 LF 멀티플라이어, 노선 수요 격차)
+**Timestamp**: 2026-05-21T21:00:00Z
+**User Input**: "데이터들이 여러 범주에 해당되도록 데이터를 다양하게 수정해줘 다양한 케이스를 확인해보고싶어"
+**AI Response**: "seed_data.py에 CLASS_LF_MULT·ROUTE_LF_OFFSET 추가, DB 재시드. ICN-CJU 7일 기준 C:red/Y:amber/M:amber/V:blue 3범주 모두 확인."
+**Context**: CONSTRUCTION PHASE - Data Diversification
+
+### 원인
+모든 클래스의 sold_seats가 동일한 flight_lf × rand(0.8~1.1) 계산 → C/Y/M/V LF가 61~62%로 수렴
+
+### 수정 내용 (backend/seed_data.py)
+- `CLASS_LF_MULT` 추가: C×1.25 / Y×1.05 / M×0.95 / V×0.65
+- `ROUTE_LF_OFFSET` 추가: ICN-CJU +0.10 ~ GMP-RSU -0.13 (8노선 차등)
+- `Flight.load_factor`: 단순 랜덤 → 전 클래스 sold/total 가중 평균으로 변경
+- DB 초기화 후 재시드 (4,050 flights / 16,200 fare tiers)
+
+### 검증 결과
+| 노선 | 기간 | C | Y | M | V |
+|------|------|---|---|---|---|
+| ICN-CJU | 7일 | 85.0% 🔴 | 74.3% 🟡 | 67.8% 🟡 | 45.9% 🔵 |
+| GMP-CJU | 7일 | 85.3% 🔴 | 74.5% 🟡 | 67.4% 🟡 | 46.3% 🔵 |
+| GMP-RSU | 1일 | 45.8% 🔵 | 32.1% 🔵 | 33.8% 🔵 | 23.9% 🔵 |
+
+---
+
 ## [class-lf-ui] Construction — 등급별 평균 LF 차트 수직 바 전환 및 한글 레이블
 **Timestamp**: 2026-05-21T20:00:00Z
 **User Input**: "기존 대시보드 화면인데 이미지 첨부파일을 참고해서 이렇게 표출되도록 ai-dlc방법론 적용해서 수정해줘 이에 맞게 DB 데이터도 수정해줘"

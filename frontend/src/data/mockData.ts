@@ -686,6 +686,8 @@ export interface DashboardClass {
 
 export interface DashboardFlight {
   id: string;
+  flightNo: string; // 편명 (예: KE1201)
+  route: string; // 노선 (예: GMP-CJU)
   time: string;
   timeSlot: "아침" | "오전" | "오후" | "저녁";
   status: FlightStatus;
@@ -1410,6 +1412,8 @@ export function buildDashboardFlights(
 
     return {
       id: sched.flightNo,
+      flightNo: sched.flightNo,
+      route,
       time: sched.time,
       timeSlot: sched.timeSlot,
       status,

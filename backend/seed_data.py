@@ -124,9 +124,31 @@ COMPETITOR_BOOKING_CLASSES = ["C", "Y", "M", "V"]
 PEAK_MONTHS = {1, 7, 8, 12}
 PEAK_DAYS = {5, 6}  # Saturday=5, Sunday=6 (isoweekday: Mon=1)
 
+# 클래스별 LF 멀티플라이어: 현실 항공사 패턴 반영
+# C(프레스티지)는 고LF(비즈니스 수요 안정), V(특가)는 저LF(가격 민감)
+CLASS_LF_MULT = {
+    "C": 1.25,   # 프레스티지: 기준 LF × 1.25 → 고수요 (85%+ 범주 진입)
+    "Y": 1.05,   # 일반 정상: 기준 LF와 비슷하거나 약간 높음
+    "M": 0.95,   # 일반 할인: 기준 LF와 비슷하거나 약간 낮음
+    "V": 0.65,   # 일반 특가: 기준 LF × 0.65 → 저수요 (65% 미만 범주)
+}
+
+# 노선별 기준 LF 오프셋 (노선 수요 다양성)
+ROUTE_LF_OFFSET = {
+    "GMP-CJU": +0.08,   # 제주 황금노선 → 고수요
+    "ICN-CJU": +0.10,   # 인천-제주 → 최고수요
+    "GMP-PUS": +0.02,
+    "ICN-PUS": 0.0,
+    "GMP-TAE": -0.10,   # 지방 소수요 → 저수요
+    "GMP-KWJ": -0.12,
+    "GMP-KPO": -0.08,
+    "GMP-RSU": -0.13,
+    "GMP-CJJ": -0.15,
+}
+
 
 def random_lf(base: float, variance: float = 0.2) -> float:
-    return min(1.0, max(0.1, base + random.uniform(-variance, variance)))
+    return min(1.0, max(0.05, base + random.uniform(-variance, variance)))
 
 
 def seed():
@@ -150,23 +172,40 @@ def seed():
         for route_id, _, _ in ROUTES:
             base_price = ROUTE_BASE_PRICE[route_id]
             schedules = ROUTE_SCHEDULES[route_id]
+            route_offset = ROUTE_LF_OFFSET.get(route_id, 0.0)
 
             for day_offset in range(90):
                 dep_date = start_date + timedelta(days=day_offset)
                 is_peak = dep_date.month in PEAK_MONTHS or dep_date.isoweekday() in PEAK_DAYS
-                lf_base = 0.75 if is_peak else 0.55
+                lf_base = (0.72 if is_peak else 0.52) + route_offset
                 time_mult_peak = 1.10 if is_peak else 1.0
 
                 for flight_no, dep_time, time_slot, aircraft in schedules:
                     flight_id = str(uuid.uuid4())[:8]
                     time_mult = 1.15 if time_slot == "evening" else 1.0 if time_slot == "morning" else 0.95
                     lf_boost = 0.08 if time_slot in ("morning", "evening") else 0.0
-                    lf = random_lf(lf_base + lf_boost)
+                    # 편 기준 기본 LF (클래스 공통 베이스)
+                    flight_lf_base = random_lf(lf_base + lf_boost, variance=0.12)
 
                     cfg = AIRCRAFT_CONFIG[aircraft]
-                    # baseCost scales with aircraft size
                     size_mult = 1.10 if aircraft == "B737-900ER" else 0.88 if aircraft == "A220-300" else 1.0
                     base_cost = round(base_price * cfg["total"] * 0.85 * size_mult * (1 + day_offset * 0.001))
+
+                    # 클래스별 LF 계산 (등급마다 다른 멀티플라이어 적용)
+                    class_sold: dict[str, int] = {}
+                    for class_code in ["C", "Y", "M", "V"]:
+                        total_seats = cfg[class_code]
+                        class_lf = min(1.0, max(0.05,
+                            flight_lf_base * CLASS_LF_MULT[class_code]
+                            + random.uniform(-0.06, 0.06)
+                        ))
+                        sold = min(round(total_seats * class_lf), total_seats)
+                        class_sold[class_code] = sold
+
+                    # Flight.load_factor = 전체 좌석 기준 가중 평균
+                    total_all = cfg["total"]
+                    total_sold_all = sum(class_sold.values())
+                    flight_lf = round(total_sold_all / total_all * 100, 1)
 
                     db.add(Flight(
                         id=flight_id,
@@ -175,7 +214,7 @@ def seed():
                         departure_date=dep_date,
                         departure_time=dep_time,
                         time_slot=time_slot,
-                        load_factor=round(lf * 100, 1),
+                        load_factor=flight_lf,
                         pace=round(random.uniform(-8, 15), 1),
                         base_cost=base_cost,
                     ))
@@ -183,23 +222,22 @@ def seed():
 
                     for class_code in ["C", "Y", "M", "V"]:
                         total_seats = cfg[class_code]
+                        sold = class_sold[class_code]
+                        class_lf_val = sold / total_seats
                         price = round(base_price * TIER_PRICE_MULT[class_code] * time_mult * time_mult_peak / 1000) * 1000
-
-                        sold = round(total_seats * lf * random.uniform(0.8, 1.1))
-                        sold = min(sold, total_seats)
 
                         tier = TIER_CODE_MAP[class_code]
                         status = (
                             "sold_out" if sold >= total_seats
-                            else "closed" if lf > 0.9 and tier == TierCode.ECONOMY_SPECIAL
+                            else "closed" if class_lf_val > 0.92 and tier == TierCode.ECONOMY_SPECIAL
                             else "open"
                         )
 
                         ai_price = None
-                        if lf > 0.80 and random.random() > 0.6:
-                            ai_price = round(price * random.uniform(1.05, 1.20) / 1000) * 1000
-                        elif lf < 0.50 and random.random() > 0.6:
-                            ai_price = round(price * random.uniform(0.82, 0.95) / 1000) * 1000
+                        if class_lf_val > 0.80 and random.random() > 0.55:
+                            ai_price = round(price * random.uniform(1.05, 1.22) / 1000) * 1000
+                        elif class_lf_val < 0.45 and random.random() > 0.55:
+                            ai_price = round(price * random.uniform(0.80, 0.94) / 1000) * 1000
 
                         db.add(FareTier(
                             id=str(uuid.uuid4())[:12],

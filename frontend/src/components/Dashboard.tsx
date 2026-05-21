@@ -214,10 +214,10 @@ function getMockSummary(routeParam: string, days: number): DashboardSummary {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
-  const [periodDays, setPeriodDays] = useState(1);
+  const [periodDays, setPeriodDays] = useState(10);
   const [dashboardRoute, setDashboardRoute] = useState("전체");
   const [summary, setSummary] = useState<DashboardSummary>(() =>
-    getMockSummary("all", 1)
+    getMockSummary("all", 10)
   );
 
   const routeParam = dashboardRoute === "전체" ? "all" : dashboardRoute;

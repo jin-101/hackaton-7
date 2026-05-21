@@ -105,7 +105,6 @@ export default function CompetitorMonitor({ refreshKey }: { refreshKey?: number 
         <div className="flex items-center gap-2">
           <Eye size={20} className="text-indigo-500" />
           <h2 className="text-xl font-bold text-gray-800">경쟁사 가격 모니터링</h2>
-          <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-medium">DB 연동</span>
         </div>
         <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-full px-3 py-1.5 text-xs font-bold text-blue-700">
           <Calendar size={12} />

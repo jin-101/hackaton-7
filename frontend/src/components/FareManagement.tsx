@@ -483,7 +483,11 @@ export default function FareManagement() {
     messages: string[];
     flightId: string;
   } | null>(null);
-  const [step, setStep] = useState<"list" | "detail">("list");
+  // URL /fares/<flightId> 형태에서 초기 step 결정
+  const [step, setStep] = useState<"list" | "detail">(() => {
+    const parts = window.location.pathname.split("/").filter(Boolean);
+    return parts.length >= 2 && parts[0] === "fares" ? "detail" : "list";
+  });
   const [lastRefreshTime, setLastRefreshTime] = useState<string>(() => {
     const now = new Date();
     return now.toTimeString().slice(0, 8);
@@ -587,13 +591,21 @@ export default function FareManagement() {
             ),
           };
         });
+        const urlFlightId = window.location.pathname.split("/")[2];
+        const restoredFlight = urlFlightId
+          ? (newFlights.find((f) => f.flightNo === urlFlightId) ?? newFlights[0])
+          : newFlights[0];
         setFlights(newFlights);
-        setSelectedFlight(newFlights[0]);
+        setSelectedFlight(restoredFlight);
       } catch {
         if (cancelled) return;
         const base = buildDashboardFlights(selectedRoute, selectedDate);
+        const urlFlightId = window.location.pathname.split("/")[2];
+        const restoredFlight = urlFlightId
+          ? (base.find((f) => f.flightNo === urlFlightId) ?? base[0])
+          : base[0];
         setFlights(base);
-        setSelectedFlight(base[0]);
+        setSelectedFlight(restoredFlight);
       }
       setRejectedClasses(new Set());
     };
@@ -602,6 +614,63 @@ export default function FareManagement() {
       cancelled = true;
     };
   }, [selectedRoute, selectedDate, crossRouteAiPrices]);
+
+  // step 전환 helper: URL도 함께 업데이트
+  const goToDetail = (flight: DashboardFlight) => {
+    window.history.pushState({}, "", `/fares/${flight.flightNo}`);
+    setSelectedFlight(flight);
+    setStep("detail");
+  };
+  const goToList = () => {
+    window.history.pushState({}, "", `/fares`);
+    setStep("list");
+  };
+
+  // 브라우저 뒤로/앞으로 가기로 step 복원
+  useEffect(() => {
+    const onPop = () => {
+      const parts = window.location.pathname.split("/").filter(Boolean);
+      if (parts.length >= 2 && parts[0] === "fares") {
+        setStep("detail");
+      } else {
+        setStep("list");
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  // 새로고침 시 고객 활동(구매/환불/변경) 시뮬레이션 — 실시간 좌석 변동 연출
+  const simulateCustomerActivity = (flightList: DashboardFlight[]): DashboardFlight[] => {
+    return flightList.map((f) => {
+      const updatedClasses = f.classes.map((cls) => {
+        if (cls.status === "Closed") return cls;
+        const available = cls.seats - cls.sold;
+        // 구매(+1~+3석), 환불(-1~-2석), 변동 없음 — 전체 3가지 중 랜덤
+        const roll = Math.random();
+        let delta = 0;
+        if (roll < 0.45 && available > 0) {
+          delta = Math.min(Math.ceil(Math.random() * 3), available);
+        } else if (roll < 0.65 && cls.sold > 0) {
+          delta = -Math.ceil(Math.random() * 2);
+        }
+        if (delta === 0) return cls;
+        const newSold = Math.max(0, Math.min(cls.seats, cls.sold + delta));
+        const newStatus: typeof cls.status =
+          newSold >= cls.seats ? "Sold Out" : cls.status === "Sold Out" ? "Open" : cls.status;
+        return { ...cls, sold: newSold, status: newStatus };
+      });
+      const totalSold = updatedClasses.reduce((s, c) => s + c.sold, 0);
+      const totalSeats = updatedClasses.reduce((s, c) => s + c.seats, 0);
+      const newLf = Math.round((totalSold / totalSeats) * 100);
+      return {
+        ...f,
+        classes: updatedClasses,
+        lf: newLf,
+        status: FLIGHT_STATUS_MAP(newLf),
+      };
+    });
+  };
 
   const syncSelected = (updated: DashboardFlight[]) => {
     const found = updated.find((f) => f.id === selectedFlight.id);
@@ -1207,7 +1276,7 @@ export default function FareManagement() {
                     className="text-[10px] font-bold uppercase tracking-wider mt-0.5"
                     style={{ color: "#93c5fd" }}
                   >
-                    {selectedFlight.id} · {selectedRoute}
+                    {selectedFlight.flightNo} · {selectedRoute}
                   </p>
                 </div>
               </div>
@@ -1730,7 +1799,7 @@ export default function FareManagement() {
                               apiFlightToDashboard(f, selectedRoute),
                             );
                             const routeMap = crossRouteAiPrices[selectedRoute];
-                            const refreshed = mapped.map((f) => {
+                            const withCrossAi = mapped.map((f) => {
                               const flightMap = routeMap?.[f.id];
                               if (!flightMap) return f;
                               return {
@@ -1742,6 +1811,7 @@ export default function FareManagement() {
                                 ),
                               };
                             });
+                            const refreshed = simulateCustomerActivity(withCrossAi);
                             setFlights(refreshed);
                             setSelectedFlight(
                               refreshed.find(
@@ -1753,10 +1823,11 @@ export default function FareManagement() {
                               selectedRoute,
                               selectedDate,
                             );
-                            setFlights(base);
+                            const refreshed = simulateCustomerActivity(base);
+                            setFlights(refreshed);
                             setSelectedFlight(
-                              base.find((f) => f.id === selectedFlight.id) ??
-                                base[0],
+                              refreshed.find((f) => f.id === selectedFlight.id) ??
+                                refreshed[0],
                             );
                           }
                         } catch {
@@ -1764,10 +1835,11 @@ export default function FareManagement() {
                             selectedRoute,
                             selectedDate,
                           );
-                          setFlights(base);
+                          const refreshed = simulateCustomerActivity(base);
+                          setFlights(refreshed);
                           setSelectedFlight(
-                            base.find((f) => f.id === selectedFlight.id) ??
-                              base[0],
+                            refreshed.find((f) => f.id === selectedFlight.id) ??
+                              refreshed[0],
                           );
                         }
                         setLastRefreshTime(
@@ -1834,8 +1906,7 @@ export default function FareManagement() {
                             <tr
                               key={f.id}
                               onClick={() => {
-                                setSelectedFlight(f);
-                                setStep("detail");
+                                goToDetail(f);
                               }}
                               className={`cursor-pointer transition-all hover:bg-blue-50/60 ${
                                 isSelected
@@ -1846,7 +1917,7 @@ export default function FareManagement() {
                               <td className="px-4 sm:px-5 py-3 sm:py-4">
                                 <div className="flex items-center gap-1.5">
                                   <span className="font-black text-slate-900 text-sm">
-                                    {f.id}
+                                    {f.flightNo}
                                   </span>
                                   {hasCrossAi && (
                                     <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-[9px] font-black">
@@ -1913,7 +1984,7 @@ export default function FareManagement() {
             {/* 뒤로가기 헤더 (full width) */}
             <div className="col-span-12 bg-white rounded-xl shadow-sm border border-slate-200 p-3 flex items-center gap-3">
               <button
-                onClick={() => setStep("list")}
+                onClick={() => goToList()}
                 className="flex items-center gap-1.5 text-slate-500 hover:text-[#002561] font-black text-sm transition-colors"
               >
                 <ChevronLeft size={18} /> 운항 목록
@@ -1921,7 +1992,7 @@ export default function FareManagement() {
               <div className="h-5 w-px bg-slate-200" />
               <div>
                 <span className="font-black text-slate-800 text-sm">
-                  {selectedFlight.id}
+                  {selectedFlight.flightNo}
                 </span>
                 <span className="text-slate-400 text-xs font-bold ml-2">
                   {selectedFlight.time} ({selectedFlight.timeSlot}) ·{" "}
@@ -1952,7 +2023,7 @@ export default function FareManagement() {
                     <LayoutGrid size={16} style={{ color: BRAND }} />
                     좌석 등급별 운임 관리
                     <span className="text-xs font-bold text-slate-400 ml-1 hidden sm:inline">
-                      — {selectedFlight.id} ({selectedFlight.time})
+                      — {selectedFlight.flightNo} ({selectedFlight.time})
                     </span>
                   </h3>
                   <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-bold uppercase">
