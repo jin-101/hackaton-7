@@ -1162,16 +1162,6 @@ export default function FareManagement({ refreshKey }: { refreshKey?: number }) 
   const margin = revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : "0.0";
   const soldSeats = selectedFlight.classes.reduce((s, c) => s + c.sold, 0);
 
-  // 선택 항공편에 미처리 AI 추천이 하나라도 있는지 여부
-  const hasPendingAi = selectedFlight.classes.some((c) => {
-    const key = `${selectedFlight.id}-${c.code}`;
-    const dateKey = `${selectedDate}:${key}`;
-    return (
-      c.aiPrice !== c.price &&
-      !rejectedClasses.has(key) &&
-      !confirmedClasses.has(dateKey)
-    );
-  });
 
   return (
     <div className="space-y-0" data-testid="fare-management-page">
