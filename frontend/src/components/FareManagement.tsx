@@ -439,6 +439,8 @@ export default function FareManagement({ refreshKey }: { refreshKey?: number }) 
   const initialFlights = getFlightsForRoute(KE_DOMESTIC_ROUTES[0]);
   const [flights, setFlights] = useState<DashboardFlight[]>(initialFlights);
   const [selectedFlight, setSelectedFlight] = useState<DashboardFlight>(initialFlights[0]);
+  // 날짜별 flights 캐시: key = "route:date"
+  const routeDateCache = useRef<Map<string, DashboardFlight[]>>(new Map());
   const [editState, setEditState] = useState<EditState | null>(null);
   const [aiQuery, setAiQuery] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
@@ -479,6 +481,8 @@ export default function FareManagement({ refreshKey }: { refreshKey?: number }) 
   const [confirmedClasses, setConfirmedClasses] = useState<Set<string>>(
     new Set(),
   );
+  // AI 추천이 1건 이상 적용된 flightId set — "적용 완료" 레이블용
+  const [appliedFlights, setAppliedFlights] = useState<Set<string>>(new Set());
   const [seatAlert, setSeatAlert] = useState<string | null>(null);
   const [inventoryLogPopup, setInventoryLogPopup] = useState<{
     messages: string[];
@@ -494,16 +498,17 @@ export default function FareManagement({ refreshKey }: { refreshKey?: number }) 
   const { approveRecommendation, rejectRecommendation, fetchRecommendations } =
     useAiRecommendationStore();
 
-  // flights 상태 변경 시 공유 스토어도 동기화 (Dashboard 실시간 연동)
+  // flights 상태 변경 시 공유 스토어 + 날짜별 캐시에도 동기화
   const setFlightsAndSync = useCallback(
     (updated: DashboardFlight[] | ((prev: DashboardFlight[]) => DashboardFlight[])) => {
       setFlights((prev) => {
         const next = typeof updated === "function" ? updated(prev) : updated;
         setFlightsForRoute(selectedRoute, next);
+        routeDateCache.current.set(`${selectedRoute}:${selectedDate}`, next);
         return next;
       });
     },
-    [selectedRoute, setFlightsForRoute],
+    [selectedRoute, selectedDate, setFlightsForRoute],
   );
   const [aiDetailPopup, setAiDetailPopup] = useState<{
     flightId: string;
@@ -644,6 +649,16 @@ export default function FareManagement({ refreshKey }: { refreshKey?: number }) 
     // 노선 또는 날짜가 실제 변경된 경우에만 API/mock 재로드
     let cancelled = false;
     const loadFlights = async () => {
+      // 이전에 이 노선+날짜 조합을 로드한 적 있으면 캐시에서 복원
+      const cacheKey = `${selectedRoute}:${selectedDate}`;
+      const cached = routeDateCache.current.get(cacheKey);
+      if (cached) {
+        setFlights(cached);
+        setFlightsForRoute(selectedRoute, cached);
+        setSelectedFlight(cached[0]);
+        setRejectedClasses(new Set());
+        return;
+      }
       try {
         const data = await apiClient.get<unknown[]>(
           `/fares/${selectedRoute}?date=${selectedDate}`,
@@ -733,10 +748,14 @@ export default function FareManagement({ refreshKey }: { refreshKey?: number }) 
 // 새로고침 버튼: store가 이미 갱신됐으므로 로컬 state만 동기화 + AI 추천 업데이트
   useEffect(() => {
     if (!refreshKey) return;
+    routeDateCache.current.clear();
     const refreshed = getFlightsForRoute(selectedRoute);
     setFlights(refreshed);
     setSelectedFlight((prev) => refreshed.find((f) => f.id === prev.id) ?? refreshed[0]);
     fetchRecommendations(selectedRoute);
+    setAppliedFlights(new Set());
+    setRejectedClasses(new Set());
+    setConfirmedClasses(new Set());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey]);
 
@@ -932,6 +951,12 @@ export default function FareManagement({ refreshKey }: { refreshKey?: number }) 
     });
     setFlightsAndSync(updated);
     syncSelected(updated);
+    setAppliedFlights((prev) => new Set(prev).add(`${selectedDate}:${selectedFlight.id}`));
+    setConfirmedClasses((prev) => {
+      const next = new Set(prev);
+      adjMap.forEach((_, code) => next.add(`${selectedDate}:${selectedFlight.id}-${code}`));
+      return next;
+    });
     setAiPopup(null);
     setAiQuery("");
   };
@@ -1013,15 +1038,18 @@ export default function FareManagement({ refreshKey }: { refreshKey?: number }) 
   const applyAiClass = (flightId: string, classCode: string) => {
     const updated = flights.map((f) => {
       if (f.id !== flightId) return f;
-      return {
-        ...f,
-        classes: f.classes.map((c) =>
-          c.code === classCode ? { ...c, price: c.aiPrice, aiPrice: c.aiPrice } : c,
-        ),
-      };
+      const newClasses = f.classes.map((c) =>
+        c.code === classCode ? { ...c, price: c.aiPrice, aiPrice: c.aiPrice } : c,
+      );
+      const yClass = newClasses.find((c) => c.code === "Y");
+      const newCurrentPrice = yClass?.price ?? f.currentPrice;
+      const newAiRecommended = yClass?.aiPrice ?? f.aiRecommended;
+      return { ...f, classes: newClasses, currentPrice: newCurrentPrice, aiRecommended: newAiRecommended };
     });
     setFlightsAndSync(updated);
     syncSelected(updated);
+    setAppliedFlights((prev) => new Set(prev).add(`${selectedDate}:${flightId}`));
+    setConfirmedClasses((prev) => new Set(prev).add(`${selectedDate}:${flightId}-${classCode}`));
   };
 
   // Open / Closed 전환 (좌석 이동 없음, Sold Out은 토글 불가)
@@ -1077,7 +1105,7 @@ export default function FareManagement({ refreshKey }: { refreshKey?: number }) 
         const next = new Set(prev);
         for (const cls of selectedFlight.classes) {
           if (cls.aiPrice !== cls.price) {
-            next.add(`${selectedFlight.id}-${cls.code}`);
+            next.add(`${selectedDate}:${selectedFlight.id}-${cls.code}`);
           }
         }
         return next;
@@ -1099,10 +1127,11 @@ export default function FareManagement({ refreshKey }: { refreshKey?: number }) 
   // 선택 항공편에 미처리 AI 추천이 하나라도 있는지 여부
   const hasPendingAi = selectedFlight.classes.some((c) => {
     const key = `${selectedFlight.id}-${c.code}`;
+    const dateKey = `${selectedDate}:${key}`;
     return (
       c.aiPrice !== c.price &&
       !rejectedClasses.has(key) &&
-      !confirmedClasses.has(key)
+      !confirmedClasses.has(dateKey)
     );
   });
 
@@ -1904,22 +1933,13 @@ export default function FareManagement({ refreshKey }: { refreshKey?: number }) 
                         return visibleFlights.map((f) => {
                           const isSelected = f.id === selectedFlight.id;
                           const paceUp = f.pace.startsWith("+");
-                          const hasPendingRec = f.classes.some((c) => {
-                            const k = `${f.id}-${c.code}`;
-                            return (
-                              c.aiPrice !== c.price &&
-                              !rejectedClasses.has(k) &&
-                              !confirmedClasses.has(k)
-                            );
-                          });
                           const rawLabel = aiSuggestionLabel(
                             f.currentPrice,
                             f.aiRecommended,
                           );
-                          const aiLabel =
-                            !hasPendingRec && rawLabel.text !== "유지"
-                              ? { text: "적용 완료", color: "text-green-600" }
-                              : rawLabel;
+                          const aiLabel = appliedFlights.has(`${selectedDate}:${f.id}`)
+                            ? { text: "적용 완료", color: "text-green-600" }
+                            : rawLabel;
                           const hasCrossAi =
                             !!crossRouteAiPrices[selectedRoute]?.[f.id];
                           return (
@@ -2054,7 +2074,7 @@ export default function FareManagement({ refreshKey }: { refreshKey?: number }) 
                   {selectedFlight.classes.map((cls) => {
                     const rejKey = `${selectedFlight.id}-${cls.code}`;
                     const isRejected = rejectedClasses.has(rejKey);
-                    const isConfirmed = confirmedClasses.has(rejKey);
+                    const isConfirmed = confirmedClasses.has(`${selectedDate}:${rejKey}`);
                     return (
                       <ClassEditCard
                         key={cls.code}

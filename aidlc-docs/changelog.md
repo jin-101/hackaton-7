@@ -4,6 +4,94 @@
 
 ---
 
+## 2026-05-21 — 날짜별 flights 캐싱으로 AI 추천 문구 꼬임 수정
+
+**파일**: `frontend/src/components/FareManagement.tsx`
+
+### 변경 내용
+- `routeDateCache: useRef<Map<string, DashboardFlight[]>>` 추가 — key = `"route:date"` (예: `"GMP-CJU:2026-05-22"`)
+- `setFlightsAndSync` 호출 시 `routeDateCache`에도 저장
+- `loadFlights` 시작 부분에 캐시 hit 확인 — 동일 노선+날짜 조합이면 API 재호출 없이 캐시에서 복원
+- 새로고침 버튼(`refreshKey` effect)에서 `routeDateCache.current.clear()` 호출
+
+### 이유
+- 기존 `flightsStore`는 `route`만 key로 사용 — 날짜 정보 없음
+- 5/23 KE1201 데이터가 `setFlightsForRoute("GMP-CJU", ...)` 호출로 5/22 데이터를 덮어씀
+- 5/22로 돌아오면 5/23 기준 `aiPrice`/`aiRecommended`가 보여 레이블이 잘못 표시됨
+
+---
+
+## 2026-05-21 — appliedFlights·confirmedClasses key에 날짜 포함 + detail 뷰 AI 추천 숨김
+
+**파일**: `frontend/src/components/FareManagement.tsx`
+
+### 변경 내용
+- `appliedFlights` key: `flightId` → `"${date}:${flightId}"`
+- `confirmedClasses` key: `"flightId-classCode"` → `"${date}:${flightId}-classCode"`
+- 날짜 변경 effect에서 두 state 초기화 제거 (날짜 복귀 시 상태 보존)
+- `applyAiClass`: `confirmedClasses`에 날짜 포함 key 추가 → detail 뷰 AI 추천 상세보기 버튼 즉시 숨김 (`hasDiff = false`)
+- `applyAiPopup`: `adjMap` 대상 클래스 전체 `confirmedClasses`에 추가
+- `handleConfirmInventory`: 날짜 포함 key로 `confirmedClasses` 추가
+
+### 이유
+- 5/22 적용 후 5/25로 이동하면 레이블이 사라지고, 5/22로 돌아오면 복원되어야 함
+- 적용된 클래스는 detail 진입 시 AI 추천 상세보기 버튼이 보이지 않아야 함 (이미 적용됨)
+- 날짜 변경 시 초기화하면 복귀 시 상태가 사라지므로 날짜를 key에 포함시켜 격리
+
+---
+
+## 2026-05-21 — "적용 완료" 레이블 조건 단순화 (v3)
+
+**파일**: `frontend/src/components/FareManagement.tsx`
+
+### 변경 내용
+- 목록 `aiLabel` 조건: `appliedFlights.has(f.id) && !hasPendingRec` → `appliedFlights.has(f.id)`
+- `hasPendingRec` 계산 로직 제거
+
+### 이유
+- 새로고침 후 `simulateFlight`에서 `hasRec=false`이면 `aiPrice === cls.price`로 세팅되어 `hasPendingRec`가 처음부터 `false`
+- 이 상태에서 `appliedFlights`는 비어있으므로 `appliedFlights.has(f.id) && !hasPendingRec = false` → 표시 안 됨
+- 단순화: 한 번이라도 적용했으면(`appliedFlights`에 있으면) 무조건 "적용 완료"
+
+---
+
+## 2026-05-21 — "적용 완료" 레이블 미표시 근본 수정
+
+**파일**: `frontend/src/components/FareManagement.tsx`
+
+### 변경 내용
+
+- `appliedFlights: Set<string>` 상태 추가 — AI 추천이 1건 이상 적용된 flightId 추적
+- `applyAiClass`: `confirmedFlights`에 flightId 추가, `currentPrice`/`aiRecommended` 갱신
+- `applyAiPopup`: `appliedFlights`에 flightId 추가
+- 목록 `aiLabel` 조건: `!hasPendingRec && rawLabel.text !== "유지"` → `appliedFlights.has(f.id) && !hasPendingRec`
+- `refreshKey` effect: 새로고침 시 `appliedFlights`, `rejectedClasses`, `confirmedClasses` 모두 초기화
+
+### 이유
+- 기존 조건 `rawLabel.text !== "유지"`: applyAiClass 후 price===aiRecommended가 되면 rawLabel이 "유지"로 바뀌어 "적용 완료"가 표시되지 않음
+- 명시적 추적(appliedFlights)으로 "이 flight에 AI 추천을 실제로 적용했는가"를 독립적으로 관리
+
+---
+
+## 2026-05-21 — 탭 전환 시 컴포넌트 상태 보존 (CSS hidden 방식)
+
+**파일**: `frontend/src/App.tsx`
+
+### 변경 내용
+
+#### 렌더링 방식 변경 (`App.tsx`)
+- 기존: `{page === "fares" && <FareManagement>}` — 탭 전환마다 컴포넌트 언마운트/리마운트
+- 변경: `<div className={page === "fares" ? "" : "hidden"}>` — 항상 마운트 유지, CSS로 표시/숨김
+- 5개 탭 모두 동일하게 적용 (dashboard, fares, competitor, simulator, report)
+- `Simulator`와 `Report`에서 불필요했던 `key={refreshKey}` 제거
+
+### 이유
+- 조건부 렌더링으로 인해 `FareManagement`의 `rejectedClasses`, `confirmedClasses`, `step`, `selectedFlight` 등 로컬 state가 탭 전환마다 초기화됨
+- 결과: 다른 탭에서 돌아오면 "적용 완료" 레이블이 사라지고, LF/예약건수 등이 재계산되어 값이 변경됨
+- CSS hidden 방식으로 DOM을 유지하면 모든 로컬 상태가 보존되고 새로고침 버튼 클릭 시에만 값이 갱신됨
+
+---
+
 ## 2026-05-21 — 보고서 목표 기준 및 AI 기여 계산 방식 수정
 
 **파일**: `frontend/src/types/index.ts`, `frontend/src/stores/reportStore.ts`, `frontend/src/components/Report.tsx`

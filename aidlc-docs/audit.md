@@ -1,5 +1,45 @@
 # AI-DLC Audit Log
 
+## [route-date-cache] Construction — 날짜별 flights 캐싱으로 AI 추천 문구 꼬임 수정
+**Timestamp**: 2026-05-21T21:30:00Z
+**User Input**: "날짜를 이동하다가 보면 AI 추천에 나오는 '유지', 가격을 올리세요 등의 문구 표출 로직이 꼬이는 것 같아. 5/22일에 KE1201편의 AI추천이 유지였고, 5/23일로 날짜를 바꿔서 KE1201편의 AI추천이 가격을 올리세요라고 되어있는 것을 보고 다시 5/22일 KE1201편을 보면 가격을 올리세요 라고 나와."
+**AI Response**: "근본 원인: flightsStore가 route만 key로 사용해 날짜별 데이터를 구분하지 못함. 5/23 데이터가 5/22 데이터를 덮어씀. 해결: FareManagement 내부에 routeDateCache(useRef<Map<'route:date', DashboardFlight[]>>) 추가. setFlightsAndSync 시 캐시 저장, loadFlights 시 캐시 hit이면 API 재호출 없이 복원. 새로고침 시 캐시 전체 clear."
+**Context**: CONSTRUCTION PHASE - Bug Fix (날짜별 flights 상태 격리)
+
+---
+
+## [date-keyed-state] Construction — appliedFlights·confirmedClasses key에 날짜 포함, detail 상세보기 버튼 숨김 연동
+**Timestamp**: 2026-05-21T21:15:00Z
+**User Input**: "5/22일에 AI 추천을 모두 적용하고 5/25일로 바꿨을때 그 적용완료가 남아있는 경우가 있어. 적용완료는 새로고침 누르기 전까지 해당 날짜에만 보여져야해. / 다시 5/22일로 돌아왔을때는 리셋되는 것이 아니고 적용완료가 나와야 돼. / step2로 들어갔을 때 AI추천 내역도 없어야 돼."
+**AI Response**: "appliedFlights key를 flightId → '${date}:${flightId}'로 변경. confirmedClasses key를 'flightId-classCode' → '${date}:${flightId}-classCode'로 변경. 날짜 변경 effect에서 두 state 초기화 제거(날짜 복귀 시 상태 보존). applyAiClass/applyAiPopup/handleConfirmInventory에서 confirmedClasses에 날짜 포함 key 추가 — hasDiff=false로 detail 뷰의 AI 추천 상세보기 버튼 즉시 숨김."
+**Context**: CONSTRUCTION PHASE - Bug Fix (날짜별 상태 격리 + detail 뷰 AI 추천 숨김)
+
+---
+
+## [applied-label-fix-v3] Construction — "적용 완료" 레이블 새로고침 후 재적용 시 미표시 수정
+**Timestamp**: 2026-05-21T20:30:00Z
+**User Input**: "테스트 케이스로 탭을 이동하면서 자체 테스트를 진행해봐. 잘 되는것 같지만 새로고침 누르고 AI추천가격을 적용하면 또 정상적으로 '적용완료'가 안나와."
+**AI Response**: "근본 원인: simulateFlight에서 hasRec=false인 경우 aiPrice=cls.price로 세팅되어 hasPendingRec가 처음부터 false. appliedFlights.has(f.id) && !hasPendingRec 조건에서 appliedFlights가 비어있어 false. 해결: 조건 단순화 — appliedFlights.has(f.id)만 확인. 한 번이라도 적용하면 '적용 완료', 새로고침 시 초기화."
+**Context**: CONSTRUCTION PHASE - Bug Fix (적용 완료 레이블 v3)
+
+---
+
+## [applied-label-fix-v2] Construction — "적용 완료" 레이블 미표시 근본 수정
+**Timestamp**: 2026-05-21T20:00:00Z
+**User Input**: "ai추천을 모두 적용해도 적용완료로 안바뀌고 있어."
+**AI Response**: "근본 원인: applyAiClass 후 price===aiPrice가 되면 rawLabel=aiSuggestionLabel(currentPrice, aiRecommended)에서 '유지'가 되어 rawLabel.text!=='유지' 조건 실패. appliedFlights(Set<string>) 상태 추가, applyAiClass/applyAiPopup 적용 시 flightId를 set에 추가, 레이블 조건을 appliedFlights.has(f.id) && !hasPendingRec으로 변경. 새로고침 시 appliedFlights/rejectedClasses/confirmedClasses 모두 초기화."
+**Context**: CONSTRUCTION PHASE - Bug Fix (적용 완료 레이블)
+
+---
+
+## [tab-state-preservation] Construction — 탭 전환 시 컴포넌트 상태 보존 (CSS hidden 방식)
+**Timestamp**: 2026-05-21T19:30:00Z
+**User Input**: "AI 추천 가격을 적용하고 '운항편 판매현황'에 돌아 왔을 때, 여전히 '적용완료'가 안나오는 경우가 있고, 탭 이동간에 L/F나 총 예약건수 등의 값이 변하는 경우가 간혹 있어. 리프레시 버튼을 클릭했을때만 값들이 변경되도록 전반적으로 로직 확인이 필요해. 그리고 만약에 탭 이동간에 각 탭의 첫 화면으로 돌아가게 되면서 로직이 꼬이게 되는거면 탭 이동 전 상태로 유지해줘도 좋아."
+**AI Response**: "App.tsx 조건부 렌더링({page === x && <Component>}) → CSS hidden 방식(항상 마운트, display:none 토글)으로 변경. 효과: rejectedClasses·confirmedClasses·step·selectedFlight 등 로컬 상태가 탭 전환 시 초기화되지 않음. Simulator·Report에서 불필요했던 key={refreshKey} 제거. 각 탭 컨테이너의 패딩도 hidden/visible에 따라 올바르게 적용."
+**Context**: CONSTRUCTION PHASE - Bug Fix (탭 전환 시 상태 유실 방지)
+
+---
+
 ## [report-target-ai-contribution] Construction — 보고서 목표 기준 및 AI 기여 계산 수정
 **Timestamp**: 2026-05-21T19:00:00Z
 **User Input**: "수정해줘."

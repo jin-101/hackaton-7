@@ -172,13 +172,11 @@ export default function App() {
           </div>
         </header>
 
-        <div className={page === "fares" ? "" : "p-4 sm:p-8"}>
-          {page === "dashboard"  && <Dashboard refreshKey={refreshKey} />}
-          {page === "fares"      && <FareManagement refreshKey={refreshKey} />}
-          {page === "competitor" && <CompetitorMonitor refreshKey={refreshKey} />}
-          {page === "simulator"  && <Simulator key={refreshKey} />}
-          {page === "report"     && <Report key={refreshKey} />}
-        </div>
+        <div className={page === "dashboard" ? "p-4 sm:p-8" : "hidden"}><Dashboard refreshKey={refreshKey} /></div>
+        <div className={page === "fares" ? "" : "hidden"}><FareManagement refreshKey={refreshKey} /></div>
+        <div className={page === "competitor" ? "p-4 sm:p-8" : "hidden"}><CompetitorMonitor refreshKey={refreshKey} /></div>
+        <div className={page === "simulator" ? "p-4 sm:p-8" : "hidden"}><Simulator /></div>
+        <div className={page === "report" ? "p-4 sm:p-8" : "hidden"}><Report /></div>
       </main>
     </div>
   );
