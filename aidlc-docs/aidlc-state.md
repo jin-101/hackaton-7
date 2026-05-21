@@ -24,7 +24,7 @@
 
 ## Execution Plan Summary
 - **Stages to Execute**: Application Design, Units Generation, Functional Design, NFR Requirements, NFR Design, Code Generation, Build and Test
-- **Stages to Skip**: Infrastructure Design (해커톤 데모, 단순 배포)
+- **Stages to Skip**: (없음 — Infrastructure Design 추가 수행됨)
 - **Expected Units**: Frontend (React/TS), Backend API (FastAPI), AI/ML Engine (Python)
 
 ## Stage Progress
@@ -40,7 +40,7 @@
 - [x] Functional Design — EXECUTE
 - [x] NFR Requirements — EXECUTE
 - [x] NFR Design — EXECUTE
-- [ ] Infrastructure Design — SKIP
+- [x] Infrastructure Design — EXECUTE (2026-05-21)
 - [x] Code Generation — EXECUTE
 - [x] Build and Test — EXECUTE
 
