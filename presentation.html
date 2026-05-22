@@ -394,12 +394,12 @@
       <div class="cover-tags">
         <span class="tag tag-blue">React 19</span>
         <span class="tag tag-purple">FastAPI</span>
-        <span class="tag tag-teal">Claude AI</span>
+        <span class="tag tag-teal">Groq AI</span>
         <span class="tag tag-amber">AWS App Runner</span>
         <span class="tag tag-green">AIDLC 방법론</span>
       </div>
       <div class="cover-meta">
-        <span>📅 2026-05-15 ~ 2026-05-21</span>
+        <span>📅 2026-05-15 ~ 2026-05-22</span>
         <span>☁️ AWS us-east-1</span>
         <span>🧪 해커톤 프로젝트</span>
       </div>
@@ -436,7 +436,7 @@
         </div>
         <div class="agenda-item">
           <div class="agenda-num" style="background:rgba(8,145,178,.15);color:#67e8f9;">06</div>
-          <div><h3>개발 이력</h3><p>v1 → v7 반복 개선</p></div>
+          <div><h3>개발 이력</h3><p>v1 → v9 반복 개선</p></div>
         </div>
         <div class="agenda-item">
           <div class="agenda-num" style="background:rgba(220,38,38,.15);color:#fca5a5;">07</div>
@@ -476,7 +476,7 @@
             <div class="card-title">📊 데이터 규모</div>
             <div class="card-body">
               항공편 <strong style="color:#60a5fa;">4,050개</strong> · 좌석 <strong style="color:#60a5fa;">16,200개</strong><br>
-              경쟁사 가격 <strong style="color:#60a5fa;">2,430개</strong> · 노선 <strong style="color:#60a5fa;">10개</strong>
+              경쟁사 가격 <strong style="color:#60a5fa;">2,430개</strong> · 노선 <strong style="color:#60a5fa;">8개</strong>
             </div>
           </div>
         </div>
@@ -488,7 +488,7 @@
                 <div class="feat-icon">🤖</div>
                 <div class="feat-text">
                   <h4>AI 전략 분석</h4>
-                  <p>돌발 이슈 입력 시 Claude AI가 등급별 차별화 가격 즉시 제안</p>
+                  <p>돌발 이슈 입력 시 Groq AI가 등급별 차별화 가격 즉시 제안</p>
                 </div>
               </div>
               <div class="feat-item">
@@ -539,7 +539,7 @@
             <div class="stage-row">
               <div class="stage-check check-done">✓</div>
               <span class="stage-name">Requirements Analysis</span>
-              <span class="stage-note">v1~v7</span>
+              <span class="stage-note">v1~v9</span>
             </div>
             <div class="stage-row">
               <div class="stage-check check-done">✓</div>
@@ -575,7 +575,7 @@
             <div class="stage-row">
               <div class="stage-check check-done">✓</div>
               <span class="stage-name">NFR Requirements</span>
-              <span class="stage-note">NFR-01~08</span>
+              <span class="stage-note">NFR-01~06</span>
             </div>
             <div class="stage-row">
               <div class="stage-check check-done">✓</div>
@@ -590,7 +590,7 @@
             <div class="stage-row">
               <div class="stage-check check-done">✓</div>
               <span class="stage-name">Code Generation</span>
-              <span class="stage-note">40+ 파일</span>
+              <span class="stage-note">38 파일</span>
             </div>
             <div class="stage-row">
               <div class="stage-check check-done">✓</div>
@@ -615,7 +615,7 @@
             📄 audit.md — 전체 의사결정 로그<br>
             📄 aidlc-state.md — 단계 진행 현황<br>
             📄 changelog.md — 개발 전체 기록<br>
-            📄 50+ 마크다운 문서
+            📄 56+ 마크다운 문서
           </div>
           <hr class="divider" style="margin:16px 0;">
           <div style="color:rgba(255,255,255,.45);font-size:12px;">
@@ -657,11 +657,12 @@
             <table class="req-table">
               <thead><tr><th>ID</th><th>요구사항</th></tr></thead>
               <tbody>
-                <tr><td class="req-id">NFR-01</td><td>응답 시간 3초 이내</td></tr>
-                <tr><td class="req-id">NFR-02</td><td>동시 사용자 10명 이상</td></tr>
-                <tr><td class="req-id">NFR-03</td><td>운임 수정 즉시 DB 반영</td></tr>
-                <tr><td class="req-id">NFR-04</td><td>Property-Based Testing 적용</td></tr>
-                <tr><td class="req-id">NFR-05</td><td>TypeScript 타입 안전성 100%</td></tr>
+                <tr><td class="req-id">NFR-01</td><td>성능 — 대시보드 초기 로드 3초, API 응답 1초 이내</td></tr>
+                <tr><td class="req-id">NFR-02</td><td>가용성 — 동시 사용자 10명, 클라우드 배포</td></tr>
+                <tr><td class="req-id">NFR-03</td><td>보안 — CORS 설정, Pydantic 입력 검증</td></tr>
+                <tr><td class="req-id">NFR-04</td><td>유지보수성 — 계층 분리, 기능별 Store 분리</td></tr>
+                <tr><td class="req-id">NFR-05</td><td>테스팅 — Property-Based Testing 4/4 통과</td></tr>
+                <tr><td class="req-id">NFR-06</td><td>반응형 — 모바일/태블릿/데스크탑 완전 지원</td></tr>
               </tbody>
             </table>
           </div>
@@ -669,8 +670,8 @@
             <div class="card-title">🔄 반복적 요구사항 수렴</div>
             <div class="card-body">
               15개 검증 질문 → <strong style="color:#a78bfa;">2개 모순 발견 &amp; 해결</strong><br>
-              v1 ~ v7 총 <strong style="color:#a78bfa;">7번</strong>의 주요 반복<br>
-              비즈니스 규칙 BR-01~BR-09 명세화
+              v1 ~ v9 총 <strong style="color:#a78bfa;">9번</strong>의 주요 반복<br>
+              비즈니스 규칙 BR-01~BR-11 명세화
             </div>
           </div>
         </div>
@@ -699,19 +700,19 @@
             <div class="card-title">📖 User Stories (15개)</div>
             <div class="card-body" style="display:flex;flex-direction:column;gap:8px;">
               <div style="padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px;border-left:2px solid #0d9488;">
-                <strong style="color:#2dd4bf;font-size:12px;">Journey 1</strong> — 운임 조회 &amp; 관리 (3 stories)
+                <strong style="color:#2dd4bf;font-size:12px;">Journey 1</strong> — 일별 현황 파악 (3 stories)
               </div>
               <div style="padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px;border-left:2px solid #7c3aed;">
-                <strong style="color:#a78bfa;font-size:12px;">Journey 2</strong> — AI 가격 추천 (3 stories)
+                <strong style="color:#a78bfa;font-size:12px;">Journey 2</strong> — 가격 결정 (4 stories)
               </div>
               <div style="padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px;border-left:2px solid #d97706;">
-                <strong style="color:#fcd34d;font-size:12px;">Journey 3</strong> — 경쟁사 모니터링 (3 stories)
+                <strong style="color:#fcd34d;font-size:12px;">Journey 3</strong> — 비상 상황 대응 (3 stories)
               </div>
               <div style="padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px;border-left:2px solid #059669;">
-                <strong style="color:#6ee7b7;font-size:12px;">Journey 4</strong> — 시뮬레이션 (3 stories)
+                <strong style="color:#6ee7b7;font-size:12px;">Journey 4</strong> — 미래 전략 분석 (2 stories)
               </div>
               <div style="padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px;border-left:2px solid #0891b2;">
-                <strong style="color:#67e8f9;font-size:12px;">Journey 5</strong> — 보고서 생성 (3 stories)
+                <strong style="color:#67e8f9;font-size:12px;">Journey 5</strong> — 보고서 &amp; 기록 (3 stories)
               </div>
               <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:4px;">✓ INVEST 기준 충족 · PBT 통합</div>
             </div>
@@ -792,7 +793,7 @@
           </div>
           <div class="card">
             <div class="card-title">🤖 AI 전략 분석</div>
-            <div class="card-body">태풍·행사·경쟁사 동향 등 돌발 이슈 자유 텍스트 입력 → Claude Sonnet 4.6 실시간 분석 → 등급별 차별화 가격 제안</div>
+            <div class="card-body">태풍·행사·경쟁사 동향 등 돌발 이슈 자유 텍스트 입력 → Groq llama-3.3-70b 실시간 분석 → 등급별 차별화 가격 제안</div>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:12px;">
@@ -861,14 +862,15 @@
           <div class="card">
             <div class="card-title" style="color:#a78bfa;">🧠 AI Engine</div>
             <div class="tech-row">
-              <span class="tech-chip">Anthropic API</span>
-              <span class="tech-chip">Claude Sonnet 4.6</span>
+              <span class="tech-chip">Groq API</span>
+              <span class="tech-chip">llama-3.3-70b-versatile</span>
               <span class="tech-chip">Strategy Pattern</span>
               <span class="tech-chip">MockAiEngine</span>
+              <span class="tech-chip">Ollama (Local)</span>
             </div>
             <div class="card-body" style="margin-top:10px;font-size:12px;">
               AbstractAiEngine 인터페이스 추상화<br>
-              Claude 실호출 + 오프라인 Mock fallback
+              Groq 실호출 + Ollama 로컬 + Mock fallback
             </div>
           </div>
           <div class="card">
@@ -911,8 +913,8 @@
           <div class="hl-box" style="background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.25);">
             <div class="hl-icon">🤖</div>
             <div class="hl-text">
-              <h3>Claude Sonnet 4.6 실시간 연동</h3>
-              <p>돌발 이슈 텍스트 입력 → API 호출 → 프레스티지·정상·할인·특가 4개 클래스 각각 가격 조정 근거 포함 추천</p>
+              <h3>Groq llama-3.3-70b 실시간 연동</h3>
+              <p>돌발 이슈 텍스트 입력 → Groq API 호출 → 프레스티지·정상·할인·특가 4개 클래스 각각 가격 조정 근거 포함 추천 · ai_strategy.log 기록</p>
             </div>
           </div>
           <div class="card">
@@ -920,10 +922,11 @@
             <div style="margin-top:12px;">
               <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px;font-family:monospace;font-size:12px;color:#a78bfa;">
                 AbstractAiEngine<br>
-                <span style="color:rgba(255,255,255,.3);">├─</span> <span style="color:#6ee7b7;">ClaudeAiEngine</span> <span style="color:rgba(255,255,255,.3);">(production)</span><br>
+                <span style="color:rgba(255,255,255,.3);">├─</span> <span style="color:#6ee7b7;">GroqAiEngine</span> <span style="color:rgba(255,255,255,.3);">(production)</span><br>
+                <span style="color:rgba(255,255,255,.3);">├─</span> <span style="color:#67e8f9;">OllamaAiEngine</span> <span style="color:rgba(255,255,255,.3);">(local)</span><br>
                 <span style="color:rgba(255,255,255,.3);">└─</span> <span style="color:#fcd34d;">MockAiEngine</span> <span style="color:rgba(255,255,255,.3);">(fallback)</span>
               </div>
-              <div class="card-body" style="margin-top:10px;">프로덕션과 오프라인 환경 모두 동일 인터페이스로 동작</div>
+              <div class="card-body" style="margin-top:10px;">GROQ_API_KEY 미설정 시 MockAiEngine 자동 전환</div>
             </div>
           </div>
         </div>
@@ -947,7 +950,7 @@
               </div>
               <div class="tl-item">
                 <div class="tl-line"><div class="tl-dot" style="background:#6366f1;"></div><div class="tl-bar"></div></div>
-                <div class="tl-body"><div class="tl-title">Claude API 호출</div><div class="tl-desc">노선·시즌·경쟁 컨텍스트 포함 프롬프트</div></div>
+                <div class="tl-body"><div class="tl-title">Groq API 호출</div><div class="tl-desc">노선·시즌·경쟁 컨텍스트 포함 프롬프트</div></div>
               </div>
               <div class="tl-item">
                 <div class="tl-line"><div class="tl-dot" style="background:#0891b2;"></div><div class="tl-bar"></div></div>
@@ -969,7 +972,7 @@
     <div class="slide-inner">
       <div class="slide-header">
         <div class="section-label lbl-cyan">06 · History</div>
-        <div class="slide-title">반복적 개발 이력 <em class="em-cyan">v1 → v7</em></div>
+        <div class="slide-title">반복적 개발 이력 <em class="em-cyan">v1 → v9</em></div>
       </div>
       <div class="g2" style="gap:20px;flex:1;">
         <div>
@@ -986,8 +989,8 @@
             <div><div style="color:#fff;font-size:13px;font-weight:600;">UI &amp; 보고서 강화</div><div class="ver-date">2026-05-18</div><div class="ver-desc">반응형 UI 적용, PDF/DOCX/이메일 보고서 자동 생성, 좌석 자동 이관 로직</div></div>
           </div>
           <div class="ver-row" style="border-bottom:none;">
-            <div class="ver-badge" style="background:rgba(217,119,6,.15);color:#fcd34d;">jin</div>
-            <div><div style="color:#fff;font-size:13px;font-weight:600;">UI/UX 개선 피드백 반영</div><div class="ver-date">2026-05-18</div><div class="ver-desc">여백 개선, Closed 상태 세분화, 총 좌석 수 불변 규칙 적용</div></div>
+            <div class="ver-badge" style="background:rgba(217,119,6,.15);color:#fcd34d;">v3</div>
+            <div><div style="color:#fff;font-size:13px;font-weight:600;">UI &amp; 보고서 강화 (상세)</div><div class="ver-date">2026-05-18</div><div class="ver-desc">여백 개선, Closed 상태 세분화, 총 좌석 수 불변 규칙 적용, 좌석 자동 이관 로직</div></div>
           </div>
         </div>
         <div>
@@ -1003,9 +1006,17 @@
             <div class="ver-badge" style="background:rgba(8,145,178,.15);color:#67e8f9;">v6</div>
             <div><div style="color:#fff;font-size:13px;font-weight:600;">데이터 정확도 개선</div><div class="ver-date">2026-05-21</div><div class="ver-desc">실제 운항 노선만 선택, 금액 콤마 표기, 대시보드 데이터 DB 연동</div></div>
           </div>
-          <div class="ver-row" style="border-bottom:none;">
+          <div class="ver-row">
             <div class="ver-badge" style="background:rgba(99,102,241,.15);color:#a5b4fc;">v7</div>
-            <div><div style="color:#fff;font-size:13px;font-weight:600;">Mock→DB 완전 전환</div><div class="ver-date">2026-05-21</div><div class="ver-desc">Phase 1~7: 전 화면 DB 연동, 즉시 가격·공급석 반영, 항공편명 버그 수정</div></div>
+            <div><div style="color:#fff;font-size:13px;font-weight:600;">Mock→DB 완전 전환</div><div class="ver-date">2026-05-21</div><div class="ver-desc">Phase 1~7: 전 화면 DB 연동, 즉시 가격·공급석 반영, 항공편명 버그 수정, URL History API 라우팅</div></div>
+          </div>
+          <div class="ver-row">
+            <div class="ver-badge" style="background:rgba(220,38,38,.15);color:#fca5a5;">v8</div>
+            <div><div style="color:#fff;font-size:13px;font-weight:600;">Sold Out 규칙 &amp; 인벤토리 확정</div><div class="ver-date">2026-05-22</div><div class="ver-desc">Sold Out 운임 수정 불가, 좌석 총합 초과 에러(BR-11), AI 추천 운임 저장, 날짜별 독립 완료 상태 관리</div></div>
+          </div>
+          <div class="ver-row" style="border-bottom:none;">
+            <div class="ver-badge" style="background:rgba(5,150,105,.15);color:#6ee7b7;">v9</div>
+            <div><div style="color:#fff;font-size:13px;font-weight:600;">Groq AI 실 연동</div><div class="ver-date">2026-05-22</div><div class="ver-desc">MockAiEngine → Groq llama-3.3-70b 실 LLM 호출, Ollama 로컬 옵션, ai_strategy.log 기록</div></div>
           </div>
         </div>
       </div>
@@ -1108,20 +1119,20 @@
       </div>
       <div class="g4" style="margin-bottom:20px;">
         <div class="stat-box">
-          <div class="stat-num" style="color:#60a5fa;">7일</div>
-          <div class="stat-lbl">개발 기간<br>(05/15 ~ 05/21)</div>
+          <div class="stat-num" style="color:#60a5fa;">8일</div>
+          <div class="stat-lbl">개발 기간<br>(05/15 ~ 05/22)</div>
         </div>
         <div class="stat-box">
-          <div class="stat-num" style="color:#6ee7b7;">40+</div>
+          <div class="stat-num" style="color:#6ee7b7;">38</div>
           <div class="stat-lbl">코드 파일<br>(Python + React)</div>
         </div>
         <div class="stat-box">
-          <div class="stat-num" style="color:#a78bfa;">50+</div>
+          <div class="stat-num" style="color:#a78bfa;">56+</div>
           <div class="stat-lbl">문서 산출물<br>(마크다운)</div>
         </div>
         <div class="stat-box">
-          <div class="stat-num" style="color:#fcd34d;">v7</div>
-          <div class="stat-lbl">요구사항 버전<br>(7번 반복 개선)</div>
+          <div class="stat-num" style="color:#fcd34d;">v9</div>
+          <div class="stat-lbl">요구사항 버전<br>(9번 반복 개선)</div>
         </div>
       </div>
       <div class="g2" style="gap:16px;flex:1;">
@@ -1154,7 +1165,7 @@
               </div>
               <div class="feat-item">
                 <div class="feat-icon">🤖</div>
-                <div class="feat-text"><h4>실제 AI 연동</h4><p>Claude API 실시간 호출 + Strategy Pattern</p></div>
+                <div class="feat-text"><h4>실제 AI 연동</h4><p>Groq API 실시간 호출 + Strategy Pattern (Ollama 로컬 지원)</p></div>
               </div>
               <div class="feat-item">
                 <div class="feat-icon">☁️</div>
@@ -1185,11 +1196,11 @@
               </div>
               <div class="feat-item">
                 <div class="feat-icon">🔄</div>
-                <div class="feat-text"><h4>빠른 반복 개선</h4><p>7일 만에 v7까지 지속적 요구사항 반영</p></div>
+                <div class="feat-text"><h4>빠른 반복 개선</h4><p>8일 만에 v9까지 지속적 요구사항 반영</p></div>
               </div>
               <div class="feat-item">
                 <div class="feat-icon">🤖</div>
-                <div class="feat-text"><h4>실제 AI 서비스 구현</h4><p>Mock이 아닌 Claude API 실 연동</p></div>
+                <div class="feat-text"><h4>실제 AI 서비스 구현</h4><p>Groq API (llama-3.3-70b) 실 연동 + Ollama 로컬 옵션</p></div>
               </div>
             </div>
           </div>
@@ -1233,7 +1244,7 @@
       </div>
       <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-bottom:48px;">
         <div class="stat-box" style="min-width:140px;">
-          <div class="stat-num" style="color:#60a5fa;font-size:28px;">7일</div>
+          <div class="stat-num" style="color:#60a5fa;font-size:28px;">8일</div>
           <div class="stat-lbl">개발 기간</div>
         </div>
         <div class="stat-box" style="min-width:140px;">
@@ -1241,7 +1252,7 @@
           <div class="stat-lbl">AIDLC 단계</div>
         </div>
         <div class="stat-box" style="min-width:140px;">
-          <div class="stat-num" style="color:#6ee7b7;font-size:28px;">v7</div>
+          <div class="stat-num" style="color:#6ee7b7;font-size:28px;">v9</div>
           <div class="stat-lbl">요구사항 버전</div>
         </div>
         <div class="stat-box" style="min-width:140px;">
@@ -1257,7 +1268,7 @@
         </div>
       </div>
       <div style="margin-top:32px;color:rgba(255,255,255,.25);font-size:12px;">
-        Built with AIDLC Methodology · React 19 · FastAPI · Claude AI · AWS App Runner
+        Built with AIDLC Methodology · React 19 · FastAPI · Groq AI · AWS App Runner
       </div>
     </div>
   </div>

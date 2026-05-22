@@ -235,9 +235,16 @@ const MOCK_KPI: Record<string, Record<number, { revenue: number; bookings: numbe
 
 function getMockSummary(routeParam: string, days: number): DashboardSummary {
   const kpi = MOCK_KPI[routeParam]?.[days] ?? MOCK_KPI.all[1];
+  const baseKpi = MOCK_KPI[routeParam]?.[1] ?? MOCK_KPI.all[1];
+  // 기간별 avgLf 비율로 노선·등급 LF 스케일링 (1일 기준 대비)
+  const lfScale = baseKpi.avgLf > 0 ? kpi.avgLf / baseKpi.avgLf : 1;
   const history = (MOCK_REVENUE_HISTORY[routeParam] ?? MOCK_REVENUE_HISTORY.all).slice(-days);
-  const lf = MOCK_ROUTE_LF[routeParam] ?? MOCK_ROUTE_LF.all;
-  const classLf = MOCK_CLASS_LF[routeParam] ?? MOCK_CLASS_LF.all;
+  const lf = (MOCK_ROUTE_LF[routeParam] ?? MOCK_ROUTE_LF.all).map((d) => ({
+    ...d, lf: Math.round(Math.min(99.9, d.lf * lfScale) * 10) / 10,
+  }));
+  const classLf = (MOCK_CLASS_LF[routeParam] ?? MOCK_CLASS_LF.all).map((d) => ({
+    ...d, lf: Math.round(Math.min(99.9, d.lf * lfScale) * 10) / 10,
+  }));
   return {
     total_revenue: kpi.revenue,
     total_bookings: kpi.bookings,
@@ -411,14 +418,15 @@ export default function Dashboard({ refreshKey }: { refreshKey?: number }) {
     return { routeLf, classLf, avgLf, todayRevenue, todayBookings };
   }, [flightsByRoute, dashboardRoute]);
 
-  const totalRevenue = liveStats ? liveStats.todayRevenue || summary.total_revenue : summary.total_revenue;
-  const totalBookings = liveStats ? liveStats.todayBookings || summary.total_bookings : summary.total_bookings;
+  // 수익·예약은 기간(periodDays) 기반 summary 값을 사용 — liveStats는 당일 단일편 수치라 기간과 무관
+  const totalRevenue = summary.total_revenue;
+  const totalBookings = summary.total_bookings;
   const avgLoadFactor = liveStats ? liveStats.avgLf || summary.avg_load_factor : summary.avg_load_factor;
   const pendingRecs = pendingRecsLive;
   const filteredHistory = summary.revenue_history;
-  const loadFactorData = liveStats ? liveStats.routeLf : summary.route_lf;
-
-  const classLfData = liveStats ? liveStats.classLf : summary.class_lf;
+  // 노선별·등급별 LF 차트는 기간 반영 summary 값 사용 (liveStats는 당일 편 집계라 기간 무관)
+  const loadFactorData = summary.route_lf;
+  const classLfData = summary.class_lf;
   const routeLabel = dashboardRoute === "전체" ? "국내선 전체" : dashboardRoute;
   const titleText = `${routeLabel} 판매현황 (최근 ${periodDays}일)`;
 
