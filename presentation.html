@@ -1273,13 +1273,451 @@
     </div>
   </div>
 
+
+  <!-- ══ SLIDE 15: 시스템 전체 구성도 ══════════════════════ -->
+  <div class="slide" data-slide="15" style="background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%);padding:32px 48px;overflow:auto;">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div class="cover-badge" style="display:inline-flex;margin-bottom:12px;"><span></span> Architecture</div>
+      <h2 style="font-size:clamp(22px,3vw,34px);font-weight:800;color:#fff;margin-bottom:6px;">시스템 전체 구성도</h2>
+      <p style="color:rgba(255,255,255,.5);font-size:14px;">Frontend → Backend → AI → AWS</p>
+    </div>
+    <!-- Main Architecture Diagram -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:nowrap;max-width:1100px;margin:0 auto;">
+
+      <!-- Frontend Block -->
+      <div style="background:rgba(59,130,246,.12);border:1.5px solid rgba(59,130,246,.5);border-radius:16px;padding:20px 24px;min-width:175px;text-align:center;">
+        <div style="font-size:28px;margin-bottom:8px;">🖥️</div>
+        <div style="font-weight:800;color:#93c5fd;font-size:15px;margin-bottom:10px;">Frontend</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div style="background:rgba(59,130,246,.15);border-radius:6px;padding:4px 8px;color:#bfdbfe;font-size:11px;">React 19 + TypeScript</div>
+          <div style="background:rgba(59,130,246,.15);border-radius:6px;padding:4px 8px;color:#bfdbfe;font-size:11px;">Vite 8 + Tailwind CSS 4</div>
+          <div style="background:rgba(59,130,246,.15);border-radius:6px;padding:4px 8px;color:#bfdbfe;font-size:11px;">Zustand 5 (상태관리)</div>
+          <div style="background:rgba(59,130,246,.15);border-radius:6px;padding:4px 8px;color:#bfdbfe;font-size:11px;">Recharts (차트)</div>
+        </div>
+        <div style="margin-top:10px;border-top:1px solid rgba(59,130,246,.3);padding-top:8px;">
+          <div style="color:rgba(255,255,255,.4);font-size:10px;">대시보드 · 운임관리</div>
+          <div style="color:rgba(255,255,255,.4);font-size:10px;">인벤토리 · AI분석 · 보고서</div>
+        </div>
+      </div>
+
+      <!-- Arrow 1 -->
+      <div style="display:flex;flex-direction:column;align-items:center;padding:0 12px;">
+        <div style="color:rgba(255,255,255,.6);font-size:11px;margin-bottom:4px;">REST API</div>
+        <div style="color:#60a5fa;font-size:22px;">→</div>
+        <div style="color:rgba(255,255,255,.4);font-size:10px;">HTTPS</div>
+      </div>
+
+      <!-- Backend Block -->
+      <div style="background:rgba(5,150,105,.12);border:1.5px solid rgba(5,150,105,.5);border-radius:16px;padding:20px 24px;min-width:175px;text-align:center;">
+        <div style="font-size:28px;margin-bottom:8px;">⚙️</div>
+        <div style="font-weight:800;color:#6ee7b7;font-size:15px;margin-bottom:10px;">Backend</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div style="background:rgba(5,150,105,.15);border-radius:6px;padding:4px 8px;color:#a7f3d0;font-size:11px;">FastAPI + Python 3.11</div>
+          <div style="background:rgba(5,150,105,.15);border-radius:6px;padding:4px 8px;color:#a7f3d0;font-size:11px;">SQLAlchemy 2.0</div>
+          <div style="background:rgba(5,150,105,.15);border-radius:6px;padding:4px 8px;color:#a7f3d0;font-size:11px;">Pydantic v2 (검증)</div>
+          <div style="background:rgba(5,150,105,.15);border-radius:6px;padding:4px 8px;color:#a7f3d0;font-size:11px;">EMSRb 알고리즘</div>
+        </div>
+        <div style="margin-top:10px;border-top:1px solid rgba(5,150,105,.3);padding-top:8px;">
+          <div style="color:rgba(255,255,255,.4);font-size:10px;">7개 REST 라우터</div>
+          <div style="color:rgba(255,255,255,.4);font-size:10px;">SQLite DB (RDS 확장 가능)</div>
+        </div>
+      </div>
+
+      <!-- Arrow 2 -->
+      <div style="display:flex;flex-direction:column;align-items:center;padding:0 12px;">
+        <div style="color:rgba(255,255,255,.6);font-size:11px;margin-bottom:4px;">Groq API</div>
+        <div style="color:#60a5fa;font-size:22px;">→</div>
+        <div style="color:rgba(255,255,255,.4);font-size:10px;">HTTPS</div>
+      </div>
+
+      <!-- AI Block -->
+      <div style="background:rgba(124,58,237,.12);border:1.5px solid rgba(124,58,237,.5);border-radius:16px;padding:20px 24px;min-width:175px;text-align:center;">
+        <div style="font-size:28px;margin-bottom:8px;">🤖</div>
+        <div style="font-weight:800;color:#c4b5fd;font-size:15px;margin-bottom:10px;">AI Engine</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div style="background:rgba(124,58,237,.15);border-radius:6px;padding:4px 8px;color:#ddd6fe;font-size:11px;">Groq (Primary)</div>
+          <div style="background:rgba(124,58,237,.15);border-radius:6px;padding:4px 8px;color:#ddd6fe;font-size:11px;">llama-3.3-70b</div>
+          <div style="background:rgba(124,58,237,.15);border-radius:6px;padding:4px 8px;color:#ddd6fe;font-size:11px;">Ollama (Local)</div>
+          <div style="background:rgba(124,58,237,.15);border-radius:6px;padding:4px 8px;color:#ddd6fe;font-size:11px;">Mock Fallback</div>
+        </div>
+        <div style="margin-top:10px;border-top:1px solid rgba(124,58,237,.3);padding-top:8px;">
+          <div style="color:rgba(255,255,255,.4);font-size:10px;">전략분석 · 운임추천</div>
+          <div style="color:rgba(255,255,255,.4);font-size:10px;">경쟁사 분석</div>
+        </div>
+      </div>
+
+      <!-- Arrow 3 -->
+      <div style="display:flex;flex-direction:column;align-items:center;padding:0 12px;">
+        <div style="color:rgba(255,255,255,.6);font-size:11px;margin-bottom:4px;">Deploy</div>
+        <div style="color:#60a5fa;font-size:22px;">→</div>
+        <div style="color:rgba(255,255,255,.4);font-size:10px;">Docker</div>
+      </div>
+
+      <!-- AWS Block -->
+      <div style="background:rgba(217,119,6,.12);border:1.5px solid rgba(217,119,6,.5);border-radius:16px;padding:20px 24px;min-width:175px;text-align:center;">
+        <div style="font-size:28px;margin-bottom:8px;">☁️</div>
+        <div style="font-weight:800;color:#fcd34d;font-size:15px;margin-bottom:10px;">AWS Cloud</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div style="background:rgba(217,119,6,.15);border-radius:6px;padding:4px 8px;color:#fde68a;font-size:11px;">App Runner</div>
+          <div style="background:rgba(217,119,6,.15);border-radius:6px;padding:4px 8px;color:#fde68a;font-size:11px;">ECR (컨테이너)</div>
+          <div style="background:rgba(217,119,6,.15);border-radius:6px;padding:4px 8px;color:#fde68a;font-size:11px;">CloudFront (CDN)</div>
+          <div style="background:rgba(217,119,6,.15);border-radius:6px;padding:4px 8px;color:#fde68a;font-size:11px;">Secrets Manager</div>
+        </div>
+        <div style="margin-top:10px;border-top:1px solid rgba(217,119,6,.3);padding-top:8px;">
+          <div style="color:rgba(255,255,255,.4);font-size:10px;">us-east-1 리전</div>
+          <div style="color:rgba(255,255,255,.4);font-size:10px;">자동 스케일링</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom Row: Key Flows -->
+    <div style="margin-top:20px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:16px;">🔄</span>
+        <div>
+          <div style="color:#93c5fd;font-size:11px;font-weight:600;">Static SPA</div>
+          <div style="color:rgba(255,255,255,.4);font-size:10px;">React 빌드 → FastAPI /static 서빙</div>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:16px;">🔐</span>
+        <div>
+          <div style="color:#6ee7b7;font-size:11px;font-weight:600;">API 통합</div>
+          <div style="color:rgba(255,255,255,.4);font-size:10px;">/api prefix 통일 · Vite proxy 제거</div>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:16px;">🛡️</span>
+        <div>
+          <div style="color:#c4b5fd;font-size:11px;font-weight:600;">AI 폴백</div>
+          <div style="color:rgba(255,255,255,.4);font-size:10px;">Groq → Ollama → Mock 순서</div>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:16px;">📦</span>
+        <div>
+          <div style="color:#fcd34d;font-size:11px;font-weight:600;">컨테이너 배포</div>
+          <div style="color:rgba(255,255,255,.4);font-size:10px;">Docker multi-stage → ECR → App Runner</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 16: AWS 인프라 구성 ═══════════════════════ -->
+  <div class="slide" data-slide="16" style="background:linear-gradient(135deg,#0f172a 0%,#1a1f35 100%);padding:32px 48px;overflow:auto;">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div class="cover-badge" style="display:inline-flex;margin-bottom:12px;"><span></span> Infrastructure</div>
+      <h2 style="font-size:clamp(22px,3vw,34px);font-weight:800;color:#fff;margin-bottom:6px;">AWS 인프라 구성</h2>
+      <p style="color:rgba(255,255,255,.5);font-size:14px;">us-east-1 리전 · 서버리스 컨테이너 아키텍처</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;max-width:1000px;margin:0 auto;">
+
+      <!-- ECR -->
+      <div style="background:rgba(217,119,6,.1);border:1.5px solid rgba(217,119,6,.4);border-radius:14px;padding:18px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <span style="font-size:24px;">📦</span>
+          <div>
+            <div style="font-weight:700;color:#fcd34d;font-size:14px;">Amazon ECR</div>
+            <div style="color:rgba(255,255,255,.4);font-size:11px;">Elastic Container Registry</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="background:rgba(217,119,6,.1);border-radius:6px;padding:6px 10px;">
+            <div style="color:#fde68a;font-size:11px;font-weight:600;">레포지토리</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">rm-system / latest</div>
+          </div>
+          <div style="background:rgba(217,119,6,.1);border-radius:6px;padding:6px 10px;">
+            <div style="color:#fde68a;font-size:11px;font-weight:600;">이미지 빌드</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">Docker multi-stage</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">Frontend build → Static</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">Backend Python app</div>
+          </div>
+          <div style="background:rgba(217,119,6,.1);border-radius:6px;padding:6px 10px;">
+            <div style="color:#fde68a;font-size:11px;font-weight:600;">Push 명령</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">aws ecr get-login-password</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">docker build + push</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- App Runner -->
+      <div style="background:rgba(5,150,105,.1);border:1.5px solid rgba(5,150,105,.4);border-radius:14px;padding:18px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <span style="font-size:24px;">🚀</span>
+          <div>
+            <div style="font-weight:700;color:#6ee7b7;font-size:14px;">AWS App Runner</div>
+            <div style="color:rgba(255,255,255,.4);font-size:11px;">Serverless Container</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="background:rgba(5,150,105,.1);border-radius:6px;padding:6px 10px;">
+            <div style="color:#a7f3d0;font-size:11px;font-weight:600;">서비스 URL</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">up8msmtgyc.us-east-1</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">.awsapprunner.com</div>
+          </div>
+          <div style="background:rgba(5,150,105,.1);border-radius:6px;padding:6px 10px;">
+            <div style="color:#a7f3d0;font-size:11px;font-weight:600;">컨테이너 설정</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">Port: 8000</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">CPU: 1 vCPU</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">Memory: 2 GB</div>
+          </div>
+          <div style="background:rgba(5,150,105,.1);border-radius:6px;padding:6px 10px;">
+            <div style="color:#a7f3d0;font-size:11px;font-weight:600;">특징</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">자동 스케일링</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">HTTPS 자동 적용</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">무중단 배포</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Secrets & Env -->
+      <div style="background:rgba(124,58,237,.1);border:1.5px solid rgba(124,58,237,.4);border-radius:14px;padding:18px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <span style="font-size:24px;">🔐</span>
+          <div>
+            <div style="font-weight:700;color:#c4b5fd;font-size:14px;">보안 & 환경변수</div>
+            <div style="color:rgba(255,255,255,.4);font-size:11px;">Secrets Manager</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="background:rgba(124,58,237,.1);border-radius:6px;padding:6px 10px;">
+            <div style="color:#ddd6fe;font-size:11px;font-weight:600;">환경변수</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">GROQ_API_KEY</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">AI_ENGINE=groq</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">ENV=production</div>
+          </div>
+          <div style="background:rgba(124,58,237,.1);border-radius:6px;padding:6px 10px;">
+            <div style="color:#ddd6fe;font-size:11px;font-weight:600;">IAM 권한</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">ECR Pull 권한</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">App Runner 실행 역할</div>
+          </div>
+          <div style="background:rgba(124,58,237,.1);border-radius:6px;padding:6px 10px;">
+            <div style="color:#ddd6fe;font-size:11px;font-weight:600;">네트워크</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">Public endpoint</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;">TLS 1.3 암호화</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Deployment Flow -->
+    <div style="margin-top:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:16px;max-width:1000px;margin-left:auto;margin-right:auto;margin-top:20px;">
+      <div style="text-align:center;color:rgba(255,255,255,.5);font-size:12px;margin-bottom:12px;">배포 파이프라인</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">
+        <div style="background:rgba(59,130,246,.15);border-radius:8px;padding:8px 14px;text-align:center;">
+          <div style="color:#93c5fd;font-size:12px;font-weight:600;">1. 소스코드</div>
+          <div style="color:rgba(255,255,255,.4);font-size:10px;">git push</div>
+        </div>
+        <div style="color:#60a5fa;font-size:16px;">→</div>
+        <div style="background:rgba(217,119,6,.15);border-radius:8px;padding:8px 14px;text-align:center;">
+          <div style="color:#fcd34d;font-size:12px;font-weight:600;">2. Docker Build</div>
+          <div style="color:rgba(255,255,255,.4);font-size:10px;">multi-stage</div>
+        </div>
+        <div style="color:#60a5fa;font-size:16px;">→</div>
+        <div style="background:rgba(217,119,6,.15);border-radius:8px;padding:8px 14px;text-align:center;">
+          <div style="color:#fcd34d;font-size:12px;font-weight:600;">3. ECR Push</div>
+          <div style="color:rgba(255,255,255,.4);font-size:10px;">이미지 등록</div>
+        </div>
+        <div style="color:#60a5fa;font-size:16px;">→</div>
+        <div style="background:rgba(5,150,105,.15);border-radius:8px;padding:8px 14px;text-align:center;">
+          <div style="color:#6ee7b7;font-size:12px;font-weight:600;">4. App Runner</div>
+          <div style="color:rgba(255,255,255,.4);font-size:10px;">자동 배포</div>
+        </div>
+        <div style="color:#60a5fa;font-size:16px;">→</div>
+        <div style="background:rgba(124,58,237,.15);border-radius:8px;padding:8px 14px;text-align:center;">
+          <div style="color:#c4b5fd;font-size:12px;font-weight:600;">5. Live 🚀</div>
+          <div style="color:rgba(255,255,255,.4);font-size:10px;">서비스 운영</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 17: 데이터 흐름 ═══════════════════════════ -->
+  <div class="slide" data-slide="17" style="background:linear-gradient(135deg,#0f172a 0%,#0d2137 100%);padding:32px 48px;overflow:auto;">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div class="cover-badge" style="display:inline-flex;margin-bottom:12px;"><span></span> Data Flow</div>
+      <h2 style="font-size:clamp(22px,3vw,34px);font-weight:800;color:#fff;margin-bottom:6px;">데이터 흐름</h2>
+      <p style="color:rgba(255,255,255,.5);font-size:14px;">사용자 요청 → API → DB → AI → 응답</p>
+    </div>
+
+    <!-- Three Flow Lanes -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;max-width:1060px;margin:0 auto;">
+
+      <!-- Flow 1: Dashboard -->
+      <div style="background:rgba(59,130,246,.08);border:1.5px solid rgba(59,130,246,.3);border-radius:14px;padding:16px;">
+        <div style="text-align:center;margin-bottom:12px;">
+          <span style="font-size:20px;">📊</span>
+          <div style="font-weight:700;color:#93c5fd;font-size:13px;margin-top:4px;">대시보드 데이터</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div style="background:rgba(59,130,246,.12);border-radius:6px;padding:7px 10px;display:flex;align-items:center;gap:8px;">
+            <span style="color:#93c5fd;font-size:14px;">①</span>
+            <div>
+              <div style="color:#bfdbfe;font-size:11px;font-weight:600;">UI 요청</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">기간·노선 필터 선택</div>
+            </div>
+          </div>
+          <div style="text-align:center;color:#60a5fa;font-size:12px;">↓</div>
+          <div style="background:rgba(59,130,246,.12);border-radius:6px;padding:7px 10px;display:flex;align-items:center;gap:8px;">
+            <span style="color:#93c5fd;font-size:14px;">②</span>
+            <div>
+              <div style="color:#bfdbfe;font-size:11px;font-weight:600;">API 호출</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">GET /api/dashboard/summary</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">?route_id=&amp;days=</div>
+            </div>
+          </div>
+          <div style="text-align:center;color:#60a5fa;font-size:12px;">↓</div>
+          <div style="background:rgba(59,130,246,.12);border-radius:6px;padding:7px 10px;display:flex;align-items:center;gap:8px;">
+            <span style="color:#93c5fd;font-size:14px;">③</span>
+            <div>
+              <div style="color:#bfdbfe;font-size:11px;font-weight:600;">DB 조회</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">SQLite bookings/fares</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">기간 집계 쿼리</div>
+            </div>
+          </div>
+          <div style="text-align:center;color:#60a5fa;font-size:12px;">↓</div>
+          <div style="background:rgba(59,130,246,.12);border-radius:6px;padding:7px 10px;display:flex;align-items:center;gap:8px;">
+            <span style="color:#93c5fd;font-size:14px;">④</span>
+            <div>
+              <div style="color:#bfdbfe;font-size:11px;font-weight:600;">응답</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">KPI·LF·예약 데이터</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">→ 차트 렌더링</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:8px;text-align:center;background:rgba(5,150,105,.15);border-radius:6px;padding:4px;">
+          <span style="color:#6ee7b7;font-size:10px;">✓ 실제 DB 데이터</span>
+        </div>
+      </div>
+
+      <!-- Flow 2: AI Analysis -->
+      <div style="background:rgba(124,58,237,.08);border:1.5px solid rgba(124,58,237,.3);border-radius:14px;padding:16px;">
+        <div style="text-align:center;margin-bottom:12px;">
+          <span style="font-size:20px;">🤖</span>
+          <div style="font-weight:700;color:#c4b5fd;font-size:13px;margin-top:4px;">AI 전략 분석</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div style="background:rgba(124,58,237,.12);border-radius:6px;padding:7px 10px;display:flex;align-items:center;gap:8px;">
+            <span style="color:#c4b5fd;font-size:14px;">①</span>
+            <div>
+              <div style="color:#ddd6fe;font-size:11px;font-weight:600;">분석 요청</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">노선·운임·경쟁사 선택</div>
+            </div>
+          </div>
+          <div style="text-align:center;color:#a78bfa;font-size:12px;">↓</div>
+          <div style="background:rgba(124,58,237,.12);border-radius:6px;padding:7px 10px;display:flex;align-items:center;gap:8px;">
+            <span style="color:#c4b5fd;font-size:14px;">②</span>
+            <div>
+              <div style="color:#ddd6fe;font-size:11px;font-weight:600;">DB 컨텍스트 수집</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">운임·예약·경쟁사 데이터</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">EMSRb 최적화 결과</div>
+            </div>
+          </div>
+          <div style="text-align:center;color:#a78bfa;font-size:12px;">↓</div>
+          <div style="background:rgba(124,58,237,.12);border-radius:6px;padding:7px 10px;display:flex;align-items:center;gap:8px;">
+            <span style="color:#c4b5fd;font-size:14px;">③</span>
+            <div>
+              <div style="color:#ddd6fe;font-size:11px;font-weight:600;">Groq API 호출</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">llama-3.3-70b-versatile</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">Prompt Engineering</div>
+            </div>
+          </div>
+          <div style="text-align:center;color:#a78bfa;font-size:12px;">↓</div>
+          <div style="background:rgba(124,58,237,.12);border-radius:6px;padding:7px 10px;display:flex;align-items:center;gap:8px;">
+            <span style="color:#c4b5fd;font-size:14px;">④</span>
+            <div>
+              <div style="color:#ddd6fe;font-size:11px;font-weight:600;">AI 응답</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">전략 · 추천 운임</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">→ 마크다운 렌더링</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:8px;text-align:center;background:rgba(124,58,237,.2);border-radius:6px;padding:4px;">
+          <span style="color:#c4b5fd;font-size:10px;">✓ Groq AI 실시간 분석</span>
+        </div>
+      </div>
+
+      <!-- Flow 3: Inventory Control -->
+      <div style="background:rgba(5,150,105,.08);border:1.5px solid rgba(5,150,105,.3);border-radius:14px;padding:16px;">
+        <div style="text-align:center;margin-bottom:12px;">
+          <span style="font-size:20px;">✈️</span>
+          <div style="font-weight:700;color:#6ee7b7;font-size:13px;margin-top:4px;">인벤토리 통제</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div style="background:rgba(5,150,105,.12);border-radius:6px;padding:7px 10px;display:flex;align-items:center;gap:8px;">
+            <span style="color:#6ee7b7;font-size:14px;">①</span>
+            <div>
+              <div style="color:#a7f3d0;font-size:11px;font-weight:600;">운임 조회</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">GET /api/fares/</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">현재 인벤토리 목록</div>
+            </div>
+          </div>
+          <div style="text-align:center;color:#34d399;font-size:12px;">↓</div>
+          <div style="background:rgba(5,150,105,.12);border-radius:6px;padding:7px 10px;display:flex;align-items:center;gap:8px;">
+            <span style="color:#6ee7b7;font-size:14px;">②</span>
+            <div>
+              <div style="color:#a7f3d0;font-size:11px;font-weight:600;">RM 최적화</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">POST /api/rm/optimize</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">EMSRb 알고리즘</div>
+            </div>
+          </div>
+          <div style="text-align:center;color:#34d399;font-size:12px;">↓</div>
+          <div style="background:rgba(5,150,105,.12);border-radius:6px;padding:7px 10px;display:flex;align-items:center;gap:8px;">
+            <span style="color:#6ee7b7;font-size:14px;">③</span>
+            <div>
+              <div style="color:#a7f3d0;font-size:11px;font-weight:600;">운임 확정</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">PUT /api/fares/{id}</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">인벤토리 업데이트</div>
+            </div>
+          </div>
+          <div style="text-align:center;color:#34d399;font-size:12px;">↓</div>
+          <div style="background:rgba(5,150,105,.12);border-radius:6px;padding:7px 10px;display:flex;align-items:center;gap:8px;">
+            <span style="color:#6ee7b7;font-size:14px;">④</span>
+            <div>
+              <div style="color:#a7f3d0;font-size:11px;font-weight:600;">보고서 생성</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">POST /api/reports/generate</div>
+              <div style="color:rgba(255,255,255,.4);font-size:10px;">DB 집계 → PDF/JSON</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:8px;text-align:center;background:rgba(5,150,105,.2);border-radius:6px;padding:4px;">
+          <span style="color:#6ee7b7;font-size:10px;">✓ 실시간 DB CRUD</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Data Sources Legend -->
+    <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:6px;background:rgba(5,150,105,.15);border-radius:8px;padding:6px 12px;">
+        <span style="color:#6ee7b7;font-size:12px;">●</span>
+        <span style="color:#a7f3d0;font-size:11px;">실제 DB (SQLite)</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;background:rgba(124,58,237,.15);border-radius:8px;padding:6px 12px;">
+        <span style="color:#c4b5fd;font-size:12px;">●</span>
+        <span style="color:#ddd6fe;font-size:11px;">Groq AI API</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;background:rgba(217,119,6,.15);border-radius:8px;padding:6px 12px;">
+        <span style="color:#fcd34d;font-size:12px;">●</span>
+        <span style="color:#fde68a;font-size:11px;">Mock 데이터 (시뮬레이터)</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;background:rgba(59,130,246,.15);border-radius:8px;padding:6px 12px;">
+        <span style="color:#93c5fd;font-size:12px;">●</span>
+        <span style="color:#bfdbfe;font-size:11px;">Mock Fallback (API 실패시)</span>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /deck -->
 
 <!-- Navigation -->
 <div class="nav">
   <button id="btn-prev" onclick="go(-1)" disabled>&#8592;</button>
   <div class="dots" id="dots"></div>
-  <span class="slide-counter" id="counter">1 / 14</span>
+  <span class="slide-counter" id="counter">1 / 17</span>
   <button id="btn-next" onclick="go(1)">&#8594;</button>
 </div>
 

@@ -158,17 +158,21 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="text-xs text-gray-400 bg-gray-50 px-2 sm:px-3 py-1.5 rounded-full border border-gray-100 hidden sm:block">
-              📅 {lastUpdated} 기준
-            </div>
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="p-1.5 rounded-full border border-gray-100 bg-gray-50 text-gray-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all disabled:opacity-50"
-              title="데이터 새로고침"
-            >
-              <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-            </button>
+            {page !== "competitor" && page !== "simulator" && page !== "report" && (
+              <>
+                <div className="text-xs text-gray-400 bg-gray-50 px-2 sm:px-3 py-1.5 rounded-full border border-gray-100 hidden sm:block">
+                  📅 {lastUpdated} 기준
+                </div>
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="p-1.5 rounded-full border border-gray-100 bg-gray-50 text-gray-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all disabled:opacity-50"
+                  title="데이터 새로고침"
+                >
+                  <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+                </button>
+              </>
+            )}
           </div>
         </header>
 

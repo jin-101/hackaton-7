@@ -1,10 +1,17 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { KE_DOMESTIC_ROUTES, competitorPrices, buildDashboardFlights } from "../data/mockData";
-import { TrendingUp, TrendingDown, Minus, Eye, Calendar } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Eye, Calendar, RefreshCw } from "lucide-react";
 import apiClient from "../api/apiClient";
 
-// mock data를 PriceComparison 형태로 변환
-function buildMockComparison(route: string): PriceComparison {
+// ±변동폭(원) 내에서 랜덤하게 가격 흔들기 (1000원 단위)
+function jitterFare(base: number, seed: number): number {
+  const pct = 0.05 + (seed % 11) * 0.01; // 5~15%
+  const sign = seed % 2 === 0 ? 1 : -1;
+  return Math.round((base * (1 + sign * pct)) / 1000) * 1000;
+}
+
+// mock data를 PriceComparison 형태로 변환 (jitter: 새로고침 카운트로 가격 변동)
+function buildMockComparison(route: string, jitter = 0): PriceComparison {
   const myFlights = buildDashboardFlights(route);
   const myFares: Record<string, number> = {};
   if (myFlights.length > 0) {
@@ -12,14 +19,19 @@ function buildMockComparison(route: string): PriceComparison {
   }
   const competitors = competitorPrices
     .filter((c) => c.route === route)
-    .map((c) => ({
+    .map((c, i) => ({
       route: c.route,
       airline: c.airline,
       booking_class: c.bookingClass === "F" ? "C" : c.bookingClass,
-      fare: c.fare,
+      fare: jitter > 0 ? jitterFare(c.fare, jitter * 7 + i) : c.fare,
       date: c.date,
     }));
   return { route, date: TODAY, my_fares: myFares, competitors };
+}
+
+function formatKST(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
 const MY_AIRLINE = "대한항공";
@@ -55,30 +67,49 @@ function mapCompClass(bookingClass: string): string {
 
 export default function CompetitorMonitor({ refreshKey }: { refreshKey?: number }) {
   const [selectedRoute, setSelectedRoute] = useState(KE_DOMESTIC_ROUTES[0]);
+  const jitterRef = useRef(0);
   const [comparison, setComparison] = useState<PriceComparison>(() => buildMockComparison(KE_DOMESTIC_ROUTES[0]));
-  const [lastUpdated, setLastUpdated] = useState(TODAY);
+  const [lastUpdated, setLastUpdated] = useState(() =>
+    formatKST(new Date())
+  );
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchComparison = useCallback(async () => {
+  const fetchComparison = useCallback(async (jitter = jitterRef.current) => {
     try {
       const data = await apiClient.get<PriceComparison>(
         `/competitors/${selectedRoute}/comparison?date=${TODAY}`
       );
+      // API 응답에도 jitter 적용 (DB 값은 고정이므로 시각적 변동을 위해)
+      if (jitter > 0) {
+        data.competitors = data.competitors.map((c, i) => ({
+          ...c,
+          fare: jitterFare(c.fare, jitter * 7 + i),
+        }));
+      }
       setComparison(data);
     } catch {
-      setComparison(buildMockComparison(selectedRoute));
+      setComparison(buildMockComparison(selectedRoute, jitter));
     }
   }, [selectedRoute]);
 
   useEffect(() => {
-    void fetchComparison();
+    void fetchComparison(0);
+  }, [fetchComparison]);
+
+  // 이 컴포넌트 전용 새로고침 핸들러
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    jitterRef.current += 1;
+    await fetchComparison(jitterRef.current);
+    setLastUpdated(formatKST(new Date()));
+    setIsRefreshing(false);
   }, [fetchComparison]);
 
   // App 헤더 새로고침 버튼 클릭 시 경쟁사 데이터도 갱신
   const [prevKey, setPrevKey] = useState(refreshKey);
   if (refreshKey !== prevKey) {
     setPrevKey(refreshKey);
-    setLastUpdated(new Date().toISOString().slice(0, 16).replace("T", " "));
-    void fetchComparison();
+    void handleRefresh();
   }
 
   const myFares: Record<string, number> = comparison?.my_fares ?? {};
@@ -106,9 +137,19 @@ export default function CompetitorMonitor({ refreshKey }: { refreshKey?: number 
           <Eye size={20} className="text-indigo-500" />
           <h2 className="text-xl font-bold text-gray-800">경쟁사 가격 모니터링</h2>
         </div>
-        <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-full px-3 py-1.5 text-xs font-bold text-blue-700">
-          <Calendar size={12} />
-          당일 {lastUpdated} 기준
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-full px-3 py-1.5 text-xs font-bold text-blue-700">
+            <Calendar size={12} />
+            당일 {lastUpdated} 기준
+          </div>
+          <button
+            onClick={() => void handleRefresh()}
+            disabled={isRefreshing}
+            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-full px-3 py-1.5 text-xs font-bold transition-colors"
+          >
+            <RefreshCw size={12} className={isRefreshing ? "animate-spin" : ""} />
+            {isRefreshing ? "조회 중…" : "가격 새로고침"}
+          </button>
         </div>
       </div>
 
